@@ -1,3 +1,4 @@
+mod bullet;
 mod components;
 mod config;
 mod logic;
@@ -22,6 +23,7 @@ fn main() {
         .add_plugins(movement::MovementPlugin)
         .add_plugins(state::GameStatePlugin)
         .add_plugins(player::PlayerPlugin)
+        .add_plugins(bullet::BulletPlugin)
         .add_systems(Startup, setup_camera)
         .run();
 }

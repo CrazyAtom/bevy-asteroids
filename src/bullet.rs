@@ -1,0 +1,98 @@
+use bevy::prelude::*;
+
+use crate::components::{Collider, Velocity, Wrapping};
+use crate::config::{BULLET_COLLIDER_RADIUS, BULLET_LIFETIME_SECS, BULLET_SPEED};
+use crate::player::Player;
+use crate::state::{GameState, GameplayEntity};
+
+#[derive(Component)]
+pub struct Bullet {
+    pub life: Timer,
+}
+
+pub struct BulletPlugin;
+
+impl Plugin for BulletPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (fire_bullet, bullet_lifetime, draw_bullets).run_if(in_state(GameState::Playing)),
+        );
+    }
+}
+
+fn fire_bullet(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+    query: Query<&Transform, With<Player>>,
+) {
+    if !keys.just_pressed(KeyCode::Space) {
+        return;
+    }
+    let Ok(ship) = query.single() else {
+        return;
+    };
+    let forward = (ship.rotation * Vec3::Y).truncate();
+    let nose = ship.translation + (ship.rotation * Vec3::Y) * 18.0;
+    commands.spawn((
+        Bullet {
+            life: Timer::from_seconds(BULLET_LIFETIME_SECS, TimerMode::Once),
+        },
+        Transform::from_translation(nose),
+        Velocity(forward * BULLET_SPEED),
+        Collider { radius: BULLET_COLLIDER_RADIUS },
+        Wrapping,
+        GameplayEntity,
+    ));
+}
+
+fn bullet_lifetime(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Bullet)>,
+) {
+    for (entity, mut bullet) in &mut query {
+        bullet.life.tick(time.delta());
+        if bullet.life.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn draw_bullets(mut gizmos: Gizmos, query: Query<&Transform, With<Bullet>>) {
+    for transform in &query {
+        gizmos.circle_2d(
+            Isometry2d::from_translation(transform.translation.truncate()),
+            2.0,
+            Color::WHITE,
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::ecs::system::RunSystemOnce;
+    use std::time::Duration;
+
+    #[test]
+    fn expired_bullet_is_despawned() {
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default());
+        let mut timer = Timer::from_seconds(1.0, TimerMode::Once);
+        timer.tick(Duration::from_secs_f32(2.0)); // 이미 만료
+        let e = app.world_mut().spawn(Bullet { life: timer }).id();
+        app.world_mut().run_system_once(bullet_lifetime).unwrap();
+        assert!(app.world().get_entity(e).is_err());
+    }
+
+    #[test]
+    fn live_bullet_survives() {
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default());
+        let timer = Timer::from_seconds(1.0, TimerMode::Once); // 아직 살아있음
+        let e = app.world_mut().spawn(Bullet { life: timer }).id();
+        app.world_mut().run_system_once(bullet_lifetime).unwrap();
+        assert!(app.world().get_entity(e).is_ok());
+    }
+}
