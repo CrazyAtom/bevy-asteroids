@@ -1,5 +1,6 @@
 mod asteroid;
 mod bullet;
+mod collision;
 mod components;
 mod config;
 mod logic;
@@ -26,6 +27,7 @@ fn main() {
         .add_plugins(player::PlayerPlugin)
         .add_plugins(bullet::BulletPlugin)
         .add_plugins(asteroid::AsteroidPlugin)
+        .add_plugins(collision::CollisionPlugin)
         .add_systems(Startup, setup_camera)
         .run();
 }
