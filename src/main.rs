@@ -7,6 +7,7 @@ mod logic;
 mod movement;
 mod player;
 mod state;
+mod ui;
 
 use bevy::prelude::*;
 
@@ -28,6 +29,7 @@ fn main() {
         .add_plugins(bullet::BulletPlugin)
         .add_plugins(asteroid::AsteroidPlugin)
         .add_plugins(collision::CollisionPlugin)
+        .add_plugins(ui::UiPlugin)
         .add_systems(Startup, setup_camera)
         .run();
 }
