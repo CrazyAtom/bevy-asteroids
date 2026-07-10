@@ -826,7 +826,7 @@ fn bullet_lifetime(
 ) {
     for (entity, mut bullet) in &mut query {
         bullet.life.tick(time.delta());
-        if bullet.life.finished() {
+        if bullet.life.is_finished() { // Bevy 0.19: Timer::finished() → is_finished()
             commands.entity(entity).despawn();
         }
     }
@@ -940,7 +940,7 @@ Expected: FAIL — `asteroid_shape`, `spawn_asteroid`, `Asteroid` 미정의.
 ```rust
 // src/asteroid.rs
 use bevy::prelude::*;
-use rand::Rng;
+use rand::RngExt; // rand 0.10: random_range는 RngExt 트레이트에 있음 (Rng 아님)
 
 use crate::components::{Collider, Velocity, Wrapping};
 use crate::config::{
@@ -1159,6 +1159,7 @@ mod tests {
     #[test]
     fn player_hit_loses_life_and_respawns() {
         let mut app = App::new();
+        app.add_plugins(bevy::state::app::StatesPlugin); // 0.19: bare App엔 StateTransition 스케줄 없음 → init_state 전 필요
         app.init_state::<GameState>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
@@ -1182,6 +1183,7 @@ mod tests {
     #[test]
     fn last_life_triggers_game_over() {
         let mut app = App::new();
+        app.add_plugins(bevy::state::app::StatesPlugin); // 0.19: bare App엔 StateTransition 스케줄 없음 → init_state 전 필요
         app.init_state::<GameState>();
         app.insert_resource(Lives(1));
         app.world_mut().spawn((
