@@ -1,3 +1,4 @@
+mod asteroid;
 mod bullet;
 mod components;
 mod config;
@@ -24,6 +25,7 @@ fn main() {
         .add_plugins(state::GameStatePlugin)
         .add_plugins(player::PlayerPlugin)
         .add_plugins(bullet::BulletPlugin)
+        .add_plugins(asteroid::AsteroidPlugin)
         .add_systems(Startup, setup_camera)
         .run();
 }
