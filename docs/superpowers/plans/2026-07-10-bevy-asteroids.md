@@ -78,7 +78,8 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Bevy Asteroids".into(),
-                resolution: (1280.0, 720.0).into(),
+                // Bevy 0.19: WindowResolution는 (u32,u32)/[u32;2]/UVec2에만 From 구현 (float 튜플 불가)
+                resolution: (1280, 720).into(),
                 ..default()
             }),
             ..default()
@@ -340,7 +341,7 @@ mod tests {
     #[test]
     fn velocity_moves_entity() {
         let mut app = App::new();
-        let mut time = Time::default();
+        let mut time = Time::<()>::default();
         time.advance_by(Duration::from_secs_f32(0.5));
         app.insert_resource(time);
         let e = app
@@ -556,7 +557,7 @@ mod tests {
     #[test]
     fn thrust_accelerates_forward() {
         let mut app = App::new();
-        let mut time = Time::default();
+        let mut time = Time::<()>::default();
         time.advance_by(Duration::from_secs_f32(0.1));
         app.insert_resource(time);
         let mut keys = ButtonInput::<KeyCode>::default();
@@ -576,7 +577,7 @@ mod tests {
     #[test]
     fn left_key_rotates_ship() {
         let mut app = App::new();
-        let mut time = Time::default();
+        let mut time = Time::<()>::default();
         time.advance_by(Duration::from_secs_f32(0.1));
         app.insert_resource(time);
         let mut keys = ButtonInput::<KeyCode>::default();
@@ -737,7 +738,7 @@ mod tests {
     #[test]
     fn expired_bullet_is_despawned() {
         let mut app = App::new();
-        app.insert_resource(Time::default());
+        app.insert_resource(Time::<()>::default());
         let mut timer = Timer::from_seconds(1.0, TimerMode::Once);
         timer.tick(Duration::from_secs_f32(2.0)); // 이미 만료
         let e = app.world_mut().spawn(Bullet { life: timer }).id();
@@ -748,7 +749,7 @@ mod tests {
     #[test]
     fn live_bullet_survives() {
         let mut app = App::new();
-        app.insert_resource(Time::default());
+        app.insert_resource(Time::<()>::default());
         let timer = Timer::from_seconds(1.0, TimerMode::Once); // 아직 살아있음
         let e = app.world_mut().spawn(Bullet { life: timer }).id();
         app.world_mut().run_system_once(bullet_lifetime).unwrap();
@@ -1504,7 +1505,7 @@ git push
 
 - 카메라: `commands.spawn(Camera2d);`
 - 입력: `Res<ButtonInput<KeyCode>>`, `.pressed(KeyCode::X)`, `.just_pressed(KeyCode::X)`; `KeyCode::{ArrowUp, ArrowLeft, ArrowRight, Space, KeyR}`; 테스트에서 `ButtonInput::press`.
-- 시간: `Res<Time>`, `time.delta_secs() -> f32`, `time.delta() -> Duration`; 고정 스텝 `insert_resource(Time::<Fixed>::from_hz(60.0))`; 테스트에서 `Time::default()` + `time.advance_by(Duration)`.
+- 시간: `Res<Time>`, `time.delta_secs() -> f32`, `time.delta() -> Duration`; 고정 스텝 `insert_resource(Time::<Fixed>::from_hz(60.0))`; 테스트에서 `Time::<()>::default()` + `time.advance_by(Duration)`.
 - 변환: `transform.rotate_z(f32)`, `transform.rotation * Vec3::Y`(정면), `transform.transform_point(Vec3) -> Vec3`, `Vec3::truncate()/Vec2::extend()`.
 - 상태: `#[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]`, `app.init_state::<T>()`, `OnEnter(S)/OnExit(S)`, `.run_if(in_state(S))`, `ResMut<NextState<T>>::set(...)`, `NextState::Pending(_)`.
 - Gizmos: 시스템 파라미터 `mut gizmos: Gizmos`; `gizmos.linestrip_2d(impl IntoIterator<Item = Vec2>, impl Into<Color>)`; `gizmos.circle_2d(Isometry2d::from_translation(Vec2), f32, impl Into<Color>)`.
