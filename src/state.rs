@@ -1,4 +1,3 @@
-// src/state.rs
 use bevy::prelude::*;
 
 use crate::config::STARTING_LIVES;

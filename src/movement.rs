@@ -1,4 +1,3 @@
-// src/movement.rs
 use bevy::prelude::*;
 
 use crate::components::{Velocity, Wrapping};

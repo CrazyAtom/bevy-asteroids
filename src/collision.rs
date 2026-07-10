@@ -26,13 +26,9 @@ fn bullet_vs_asteroid(
     bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
     asteroids: Query<(Entity, &Transform, &Collider, &Asteroid)>,
 ) {
-    let mut spent_bullets: HashSet<Entity> = HashSet::new();
     let mut destroyed: HashSet<Entity> = HashSet::new();
 
     for (bullet_entity, bullet_tf, bullet_col) in &bullets {
-        if spent_bullets.contains(&bullet_entity) {
-            continue;
-        }
         for (asteroid_entity, asteroid_tf, asteroid_col, asteroid) in &asteroids {
             if destroyed.contains(&asteroid_entity) {
                 continue;
@@ -43,7 +39,6 @@ fn bullet_vs_asteroid(
                 asteroid_tf.translation.truncate(),
                 asteroid_col.radius,
             ) {
-                spent_bullets.insert(bullet_entity);
                 destroyed.insert(asteroid_entity);
                 commands.entity(bullet_entity).despawn();
                 commands.entity(asteroid_entity).despawn();
