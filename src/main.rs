@@ -1,5 +1,7 @@
+mod components;
 mod config;
 mod logic;
+mod movement;
 
 use bevy::prelude::*;
 
@@ -14,6 +16,8 @@ fn main() {
             ..default()
         }))
         .insert_resource(ClearColor(Color::BLACK))
+        .insert_resource(Time::<Fixed>::from_hz(60.0))
+        .add_plugins(movement::MovementPlugin)
         .add_systems(Startup, setup_camera)
         .run();
 }
