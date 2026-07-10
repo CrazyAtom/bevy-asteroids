@@ -1,3 +1,6 @@
+mod config;
+mod logic;
+
 use bevy::prelude::*;
 
 fn main() {
