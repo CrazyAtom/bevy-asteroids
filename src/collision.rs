@@ -5,6 +5,8 @@ use bevy::prelude::*;
 use crate::asteroid::{spawn_asteroid, Asteroid};
 use crate::bullet::Bullet;
 use crate::components::Collider;
+use crate::config::EXPLOSION_PARTICLES;
+use crate::effects::spawn_explosion;
 use crate::logic::{circles_overlap, next_asteroid_size};
 use crate::player::{spawn_player_entity, Player};
 use crate::state::{GameState, Lives, Score};
@@ -43,6 +45,7 @@ fn bullet_vs_asteroid(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(asteroid_entity).despawn();
                 score.0 += asteroid.size.score();
+                spawn_explosion(&mut commands, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
 
                 if let Some(next) = next_asteroid_size(asteroid.size) {
                     let base = asteroid_tf.translation.truncate();
@@ -74,6 +77,7 @@ fn player_vs_asteroid(
             asteroid_tf.translation.truncate(),
             asteroid_col.radius,
         ) {
+            spawn_explosion(&mut commands, player_tf.translation.truncate(), EXPLOSION_PARTICLES);
             lives.0 = lives.0.saturating_sub(1);
             commands.entity(player_entity).despawn();
             if lives.0 == 0 {
@@ -143,6 +147,25 @@ mod tests {
 
         let mut q = app.world_mut().query::<&Asteroid>();
         assert_eq!(q.iter(app.world()).count(), 0);
+    }
+
+    #[test]
+    fn destroying_asteroid_spawns_particles() {
+        let mut app = App::new();
+        app.insert_resource(Score(0));
+        app.world_mut().spawn((
+            Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Collider { radius: 2.0 },
+        ));
+        app.world_mut().spawn((
+            Asteroid { size: AsteroidSize::Small },
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Collider { radius: AsteroidSize::Small.radius() },
+        ));
+        app.world_mut().run_system_once(bullet_vs_asteroid).unwrap();
+        let mut q = app.world_mut().query::<&crate::effects::Particle>();
+        assert!(q.iter(app.world()).count() > 0);
     }
 
     #[test]
