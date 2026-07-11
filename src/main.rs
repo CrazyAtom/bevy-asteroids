@@ -8,6 +8,7 @@ mod logic;
 mod movement;
 mod player;
 mod state;
+mod ufo;
 mod ui;
 
 use bevy::prelude::*;
@@ -31,6 +32,7 @@ fn main() {
         .add_plugins(asteroid::AsteroidPlugin)
         .add_plugins(collision::CollisionPlugin)
         .add_plugins(effects::EffectsPlugin)
+        .add_plugins(ufo::UfoPlugin)
         .add_plugins(ui::UiPlugin)
         .add_systems(Startup, setup_camera)
         .run();

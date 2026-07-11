@@ -35,3 +35,9 @@ pub const EXPLOSION_PARTICLES: usize = 10;
 pub const PARTICLE_LIFETIME_SECS: f32 = 0.6;
 pub const PARTICLE_SPEED_MIN: f32 = 60.0;
 pub const PARTICLE_SPEED_MAX: f32 = 200.0;
+
+pub const UFO_SPEED: f32 = 140.0;
+pub const UFO_LARGE_RADIUS: f32 = 20.0;
+pub const UFO_SMALL_RADIUS: f32 = 12.0;
+pub const UFO_FIRE_INTERVAL_SECS: f32 = 1.4;
+pub const UFO_SPAWN_INTERVAL_BASE: f32 = 12.0;
