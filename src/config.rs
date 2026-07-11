@@ -20,3 +20,4 @@ pub const STARTING_LIVES: u32 = 3;
 pub const INITIAL_ASTEROIDS: usize = 4;
 pub const ASTEROID_MIN_SPEED: f32 = 40.0;
 pub const ASTEROID_MAX_SPEED: f32 = 120.0;
+pub const ASTEROID_SPIN_MAX: f32 = 1.5; // rad/s (회전 각속도 범위 ±)

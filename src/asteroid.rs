@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::components::{Collider, Velocity, Wrapping};
+use crate::components::{AngularVelocity, Collider, Velocity, Wrapping};
 use crate::config::{
-    ASTEROID_MAX_SPEED, ASTEROID_MIN_SPEED, HALF_HEIGHT, HALF_WIDTH, INITIAL_ASTEROIDS,
+    ASTEROID_MAX_SPEED, ASTEROID_MIN_SPEED, ASTEROID_SPIN_MAX, HALF_HEIGHT, HALF_WIDTH,
+    INITIAL_ASTEROIDS,
 };
 use crate::logic::AsteroidSize;
 use crate::state::{GameState, GameplayEntity};
@@ -51,11 +52,14 @@ pub fn spawn_asteroid(
     position: Vec2,
     velocity: Vec2,
 ) {
+    let mut rng = rand::rng();
+    let spin = rng.random_range(-ASTEROID_SPIN_MAX..ASTEROID_SPIN_MAX);
     commands.spawn((
         Asteroid { size },
         AsteroidShape { points: asteroid_shape(size.radius()) },
         Transform::from_translation(position.extend(0.0)),
         Velocity(velocity),
+        AngularVelocity(spin),
         Collider { radius: size.radius() },
         Wrapping,
         GameplayEntity,
