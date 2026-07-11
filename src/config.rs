@@ -1,3 +1,5 @@
+use bevy::prelude::Color;
+
 pub const WINDOW_WIDTH: f32 = 1280.0;
 pub const WINDOW_HEIGHT: f32 = 720.0;
 pub const HALF_WIDTH: f32 = WINDOW_WIDTH / 2.0;
@@ -11,6 +13,8 @@ pub const SHIP_DAMPING: f32 = 0.985;
 // 우주선 최고 속도 상한(units/s).
 pub const SHIP_MAX_SPEED: f32 = 450.0;
 pub const SHIP_BRAKE_RATE: f32 = 3.0; // 브레이크 감쇠율(1/s)
+pub const SHIP_COLOR: Color = Color::srgb(0.40, 0.90, 1.00); // 청록
+pub const FLAME_COLOR: Color = Color::srgb(1.00, 0.55, 0.15); // 주황
 
 pub const BULLET_SPEED: f32 = 620.0;
 pub const BULLET_LIFETIME_SECS: f32 = 1.2;

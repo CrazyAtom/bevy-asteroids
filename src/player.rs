@@ -2,14 +2,20 @@ use bevy::prelude::*;
 
 use crate::components::{Collider, Velocity, Wrapping};
 use crate::config::{
-    SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
-    SHIP_THRUST,
+    FLAME_COLOR, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
+    SHIP_ROTATION_SPEED, SHIP_THRUST,
 };
 use crate::logic::apply_brake;
 use crate::state::{GameState, GameplayEntity};
 
 #[derive(Component)]
 pub struct Player;
+
+#[derive(Component, Default)]
+pub struct EngineState {
+    pub thrusting: bool,
+    pub braking: bool,
+}
 
 /// 우주선 로컬 좌표(정면 = +Y). 마지막 점은 첫 점과 같아 닫힌 외곽선을 만든다.
 const SHIP_POINTS: [Vec2; 5] = [
@@ -44,6 +50,7 @@ pub fn spawn_player_entity(commands: &mut Commands) {
         Collider { radius: SHIP_COLLIDER_RADIUS },
         Wrapping,
         GameplayEntity,
+        EngineState::default(),
     ));
 }
 
@@ -54,10 +61,10 @@ fn spawn_player(mut commands: Commands) {
 fn player_input(
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut query: Query<(&mut Transform, &mut Velocity), With<Player>>,
+    mut query: Query<(&mut Transform, &mut Velocity, &mut EngineState), With<Player>>,
 ) {
     let dt = time.delta_secs();
-    for (mut transform, mut velocity) in &mut query {
+    for (mut transform, mut velocity, mut engine) in &mut query {
         let mut turn = 0.0;
         if keys.pressed(KeyCode::ArrowLeft) {
             turn += 1.0;
@@ -67,12 +74,14 @@ fn player_input(
         }
         transform.rotate_z(turn * SHIP_ROTATION_SPEED * dt);
 
-        if keys.pressed(KeyCode::ArrowUp) {
+        engine.thrusting = keys.pressed(KeyCode::ArrowUp);
+        engine.braking = keys.pressed(KeyCode::ArrowDown);
+
+        if engine.thrusting {
             let forward = (transform.rotation * Vec3::Y).truncate();
             velocity.0 += forward * SHIP_THRUST * dt;
         }
-
-        if keys.pressed(KeyCode::ArrowDown) {
+        if engine.braking {
             velocity.0 = apply_brake(velocity.0, SHIP_BRAKE_RATE, dt);
         }
     }
@@ -88,10 +97,35 @@ fn apply_ship_damping(mut query: Query<&mut Velocity, With<Player>>) {
     }
 }
 
-fn draw_player(mut gizmos: Gizmos, query: Query<&Transform, With<Player>>) {
-    for transform in &query {
+fn draw_player(
+    mut gizmos: Gizmos,
+    time: Res<Time>,
+    query: Query<(&Transform, &EngineState), With<Player>>,
+) {
+    for (transform, engine) in &query {
         let points = SHIP_POINTS.map(|p| transform.transform_point(p.extend(0.0)).truncate());
-        gizmos.linestrip_2d(points, Color::WHITE);
+        gizmos.linestrip_2d(points, SHIP_COLOR);
+
+        // 깜빡임 계수(0.6~1.0)
+        let flicker = 0.6 + 0.4 * (time.elapsed_secs() * 30.0).sin().abs();
+        if engine.thrusting {
+            let flame = [
+                Vec2::new(-6.0, -12.0),
+                Vec2::new(0.0, -12.0 - 10.0 * flicker),
+                Vec2::new(6.0, -12.0),
+            ]
+            .map(|p| transform.transform_point(p.extend(0.0)).truncate());
+            gizmos.linestrip_2d(flame, FLAME_COLOR);
+        }
+        if engine.braking {
+            let flame = [
+                Vec2::new(-4.0, 14.0),
+                Vec2::new(0.0, 14.0 + 7.0 * flicker),
+                Vec2::new(4.0, 14.0),
+            ]
+            .map(|p| transform.transform_point(p.extend(0.0)).truncate());
+            gizmos.linestrip_2d(flame, FLAME_COLOR);
+        }
     }
 }
 
@@ -113,7 +147,12 @@ mod tests {
         app.insert_resource(keys);
         let e = app
             .world_mut()
-            .spawn((Player, Transform::from_xyz(0.0, 0.0, 0.0), Velocity(Vec2::ZERO)))
+            .spawn((
+                Player,
+                Transform::from_xyz(0.0, 0.0, 0.0),
+                Velocity(Vec2::ZERO),
+                EngineState::default(),
+            ))
             .id();
         app.world_mut().run_system_once(player_input).unwrap();
         let v = app.world().entity(e).get::<Velocity>().unwrap();
@@ -133,7 +172,12 @@ mod tests {
         app.insert_resource(keys);
         let e = app
             .world_mut()
-            .spawn((Player, Transform::from_xyz(0.0, 0.0, 0.0), Velocity(Vec2::ZERO)))
+            .spawn((
+                Player,
+                Transform::from_xyz(0.0, 0.0, 0.0),
+                Velocity(Vec2::ZERO),
+                EngineState::default(),
+            ))
             .id();
         app.world_mut().run_system_once(player_input).unwrap();
         let t = app.world().entity(e).get::<Transform>().unwrap();
@@ -166,5 +210,24 @@ mod tests {
         app.world_mut().run_system_once(apply_ship_damping).unwrap();
         let v = app.world().entity(e).get::<Velocity>().unwrap();
         assert!(v.0.length() <= SHIP_MAX_SPEED + 1e-3);
+    }
+
+    #[test]
+    fn thrust_key_sets_engine_state() {
+        let mut app = App::new();
+        let mut time = Time::<()>::default();
+        time.advance_by(Duration::from_secs_f32(0.1));
+        app.insert_resource(time);
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::ArrowUp);
+        app.insert_resource(keys);
+        let e = app
+            .world_mut()
+            .spawn((Player, Transform::default(), Velocity(Vec2::ZERO), EngineState::default()))
+            .id();
+        app.world_mut().run_system_once(player_input).unwrap();
+        let s = app.world().entity(e).get::<EngineState>().unwrap();
+        assert!(s.thrusting);
+        assert!(!s.braking);
     }
 }
