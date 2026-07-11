@@ -80,7 +80,7 @@ fn random_spawn_position() -> Vec2 {
     }
 }
 
-fn random_velocity(size: AsteroidSize) -> Vec2 {
+pub fn random_velocity(size: AsteroidSize) -> Vec2 {
     let mut rng = rand::rng();
     let angle = rng.random_range(0.0..std::f32::consts::TAU);
     let speed = rng.random_range(ASTEROID_MIN_SPEED..ASTEROID_MAX_SPEED) * size.speed_scale();

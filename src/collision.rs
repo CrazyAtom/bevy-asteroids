@@ -2,14 +2,15 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 
-use crate::asteroid::{spawn_asteroid, Asteroid};
-use crate::bullet::Bullet;
+use crate::asteroid::{random_velocity, spawn_asteroid, Asteroid};
+use crate::bullet::{Bullet, EnemyBullet};
 use crate::components::Collider;
 use crate::config::EXPLOSION_PARTICLES;
 use crate::effects::spawn_explosion;
 use crate::logic::{circles_overlap, next_asteroid_size};
 use crate::player::{spawn_player_entity, Player};
 use crate::state::{GameState, Lives, Score};
+use crate::ufo::Ufo;
 
 pub struct CollisionPlugin;
 
@@ -17,7 +18,8 @@ impl Plugin for CollisionPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (bullet_vs_asteroid, player_vs_asteroid).run_if(in_state(GameState::Playing)),
+            (bullet_vs_asteroid, player_vs_asteroid, bullet_vs_ufo, enemy_bullet_vs_player, ufo_vs_player)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -49,9 +51,8 @@ fn bullet_vs_asteroid(
 
                 if let Some(next) = next_asteroid_size(asteroid.size) {
                     let base = asteroid_tf.translation.truncate();
-                    for dir in [1.0_f32, -1.0] {
-                        let velocity = Vec2::new(dir * 70.0, dir * 45.0);
-                        spawn_asteroid(&mut commands, next, base, velocity);
+                    for _ in 0..2 {
+                        spawn_asteroid(&mut commands, next, base, random_velocity(next));
                     }
                 }
                 break; // 이 총알은 소진됨
@@ -76,6 +77,96 @@ fn player_vs_asteroid(
             player_col.radius,
             asteroid_tf.translation.truncate(),
             asteroid_col.radius,
+        ) {
+            spawn_explosion(&mut commands, player_tf.translation.truncate(), EXPLOSION_PARTICLES);
+            lives.0 = lives.0.saturating_sub(1);
+            commands.entity(player_entity).despawn();
+            if lives.0 == 0 {
+                next_state.set(GameState::GameOver);
+            } else {
+                spawn_player_entity(&mut commands);
+            }
+            break;
+        }
+    }
+}
+
+fn bullet_vs_ufo(
+    mut commands: Commands,
+    mut score: ResMut<Score>,
+    bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
+    ufos: Query<(Entity, &Transform, &Collider, &Ufo)>,
+) {
+    let mut destroyed: std::collections::HashSet<Entity> = std::collections::HashSet::new();
+    for (bullet_entity, bullet_tf, bullet_col) in &bullets {
+        for (ufo_entity, ufo_tf, ufo_col, ufo) in &ufos {
+            if destroyed.contains(&ufo_entity) {
+                continue;
+            }
+            if circles_overlap(
+                bullet_tf.translation.truncate(),
+                bullet_col.radius,
+                ufo_tf.translation.truncate(),
+                ufo_col.radius,
+            ) {
+                destroyed.insert(ufo_entity);
+                commands.entity(bullet_entity).despawn();
+                commands.entity(ufo_entity).despawn();
+                score.0 += ufo.size.score();
+                spawn_explosion(&mut commands, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
+                break;
+            }
+        }
+    }
+}
+
+fn enemy_bullet_vs_player(
+    mut commands: Commands,
+    mut lives: ResMut<Lives>,
+    mut next_state: ResMut<NextState<GameState>>,
+    players: Query<(Entity, &Transform, &Collider), With<Player>>,
+    bullets: Query<(Entity, &Transform, &Collider), With<EnemyBullet>>,
+) {
+    let Ok((player_entity, player_tf, player_col)) = players.single() else {
+        return;
+    };
+    for (bullet_entity, bullet_tf, bullet_col) in &bullets {
+        if circles_overlap(
+            player_tf.translation.truncate(),
+            player_col.radius,
+            bullet_tf.translation.truncate(),
+            bullet_col.radius,
+        ) {
+            commands.entity(bullet_entity).despawn();
+            spawn_explosion(&mut commands, player_tf.translation.truncate(), EXPLOSION_PARTICLES);
+            lives.0 = lives.0.saturating_sub(1);
+            commands.entity(player_entity).despawn();
+            if lives.0 == 0 {
+                next_state.set(GameState::GameOver);
+            } else {
+                spawn_player_entity(&mut commands);
+            }
+            break;
+        }
+    }
+}
+
+fn ufo_vs_player(
+    mut commands: Commands,
+    mut lives: ResMut<Lives>,
+    mut next_state: ResMut<NextState<GameState>>,
+    players: Query<(Entity, &Transform, &Collider), With<Player>>,
+    ufos: Query<(&Transform, &Collider), With<Ufo>>,
+) {
+    let Ok((player_entity, player_tf, player_col)) = players.single() else {
+        return;
+    };
+    for (ufo_tf, ufo_col) in &ufos {
+        if circles_overlap(
+            player_tf.translation.truncate(),
+            player_col.radius,
+            ufo_tf.translation.truncate(),
+            ufo_col.radius,
         ) {
             spawn_explosion(&mut commands, player_tf.translation.truncate(), EXPLOSION_PARTICLES);
             lives.0 = lives.0.saturating_sub(1);
@@ -216,5 +307,45 @@ mod tests {
             app.world().resource::<NextState<GameState>>(),
             NextState::Pending(GameState::GameOver)
         ));
+    }
+
+    #[test]
+    fn bullet_destroys_ufo_and_scores() {
+        use crate::ufo::{Ufo, UfoSize};
+        let mut app = App::new();
+        app.insert_resource(Score(0));
+        let bullet = app.world_mut().spawn((
+            Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Collider { radius: 2.0 },
+        )).id();
+        app.world_mut().spawn((
+            Ufo { size: UfoSize::Small, fire_timer: Timer::from_seconds(1.0, TimerMode::Repeating) },
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Collider { radius: UfoSize::Small.radius() },
+        ));
+        app.world_mut().run_system_once(bullet_vs_ufo).unwrap();
+        assert!(app.world().get_entity(bullet).is_err());
+        assert_eq!(app.world().resource::<Score>().0, 1000);
+        let mut q = app.world_mut().query::<&Ufo>();
+        assert_eq!(q.iter(app.world()).count(), 0);
+    }
+
+    #[test]
+    fn enemy_bullet_hits_player_loses_life() {
+        let mut app = App::new();
+        app.add_plugins(bevy::state::app::StatesPlugin);
+        app.init_state::<GameState>();
+        app.insert_resource(Lives(3));
+        app.world_mut().spawn((
+            Player, Transform::from_xyz(0.0, 0.0, 0.0), Collider { radius: 12.0 },
+        ));
+        app.world_mut().spawn((
+            EnemyBullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Collider { radius: 2.5 },
+        ));
+        app.world_mut().run_system_once(enemy_bullet_vs_player).unwrap();
+        assert_eq!(app.world().resource::<Lives>().0, 2);
     }
 }
