@@ -15,6 +15,9 @@ pub struct Score(pub u32);
 #[derive(Resource)]
 pub struct Lives(pub u32);
 
+#[derive(Resource, Default)]
+pub struct Wave(pub u32);
+
 /// 한 판(Playing) 동안 존재하는 모든 엔티티에 붙는 마커. 판이 끝나면 일괄 정리된다.
 #[derive(Component)]
 pub struct GameplayEntity;
@@ -26,14 +29,16 @@ impl Plugin for GameStatePlugin {
         app.init_state::<GameState>()
             .insert_resource(Score(0))
             .insert_resource(Lives(STARTING_LIVES))
+            .insert_resource(Wave(1))
             .add_systems(OnEnter(GameState::Playing), reset_game)
             .add_systems(OnExit(GameState::Playing), despawn_gameplay_entities);
     }
 }
 
-fn reset_game(mut score: ResMut<Score>, mut lives: ResMut<Lives>) {
+fn reset_game(mut score: ResMut<Score>, mut lives: ResMut<Lives>, mut wave: ResMut<Wave>) {
     score.0 = 0;
     lives.0 = STARTING_LIVES;
+    wave.0 = 1;
 }
 
 fn despawn_gameplay_entities(mut commands: Commands, query: Query<Entity, With<GameplayEntity>>) {

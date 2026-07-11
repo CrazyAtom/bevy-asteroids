@@ -38,16 +38,47 @@ pub struct Ufo {
     pub fire_timer: Timer,
 }
 
+#[derive(Resource)]
+pub struct UfoSpawnTimer(pub Timer);
+
 pub struct UfoPlugin;
 
 impl Plugin for UfoPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.insert_resource(UfoSpawnTimer(Timer::from_seconds(
+            crate::config::UFO_SPAWN_INTERVAL_BASE,
+            TimerMode::Once,
+        )))
+        .add_systems(
             Update,
-            (ufo_wobble, ufo_fire, despawn_offscreen_ufo, draw_ufos)
+            (ufo_spawn_system, ufo_wobble, ufo_fire, despawn_offscreen_ufo, draw_ufos)
                 .run_if(in_state(GameState::Playing)),
         );
     }
+}
+
+fn ufo_spawn_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    wave: Res<crate::state::Wave>,
+    mut timer: ResMut<UfoSpawnTimer>,
+) {
+    timer.0.tick(time.delta());
+    if !timer.0.is_finished() {
+        return;
+    }
+    let mut rng = rand::rng();
+    let size = if rng.random_range(0.0..1.0) < crate::logic::small_ufo_probability_for_wave(wave.0)
+    {
+        UfoSize::Small
+    } else {
+        UfoSize::Large
+    };
+    let from_left = rng.random_range(0.0..1.0) < 0.5;
+    spawn_ufo(&mut commands, size, from_left);
+    // 다음 간격을 웨이브 기반으로 재설정
+    let interval = crate::logic::ufo_interval_for_wave(wave.0);
+    timer.0 = Timer::from_seconds(interval, TimerMode::Once);
 }
 
 /// 화면 좌/우 가장자리에서 등장해 반대편으로 수평 이동하는 UFO 1기를 스폰.

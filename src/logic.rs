@@ -75,6 +75,23 @@ pub fn aim_direction(from: Vec2, to: Vec2) -> Vec2 {
     (to - from).try_normalize().unwrap_or(Vec2::Y)
 }
 
+pub fn asteroid_count_for_wave(wave: u32) -> usize {
+    (crate::config::BASE_ASTEROIDS + wave as usize).min(crate::config::MAX_ASTEROIDS)
+}
+
+pub fn asteroid_speed_scale_for_wave(wave: u32) -> f32 {
+    (1.0 + wave as f32 * 0.08).min(2.0)
+}
+
+pub fn ufo_interval_for_wave(wave: u32) -> f32 {
+    (crate::config::UFO_SPAWN_INTERVAL_BASE - wave as f32 * 0.8)
+        .max(crate::config::UFO_SPAWN_INTERVAL_MIN)
+}
+
+pub fn small_ufo_probability_for_wave(wave: u32) -> f32 {
+    (0.2 + wave as f32 * 0.05).min(0.9)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,5 +168,22 @@ mod tests {
     fn aim_direction_zero_defaults_up() {
         let d = aim_direction(Vec2::ZERO, Vec2::ZERO);
         assert!((d - Vec2::Y).length() < 1e-4);
+    }
+
+    #[test]
+    fn wave_scaling_formulas() {
+        // 개수: 기본4 + wave, 상한10
+        assert_eq!(asteroid_count_for_wave(0), 4);
+        assert_eq!(asteroid_count_for_wave(3), 7);
+        assert_eq!(asteroid_count_for_wave(50), 10); // 상한
+        // 속도 배수: 웨이브↑ → 증가
+        assert!(asteroid_speed_scale_for_wave(5) > asteroid_speed_scale_for_wave(0));
+        assert_eq!(asteroid_speed_scale_for_wave(0), 1.0);
+        // UFO 간격: 웨이브↑ → 감소, 하한 존재
+        assert!(ufo_interval_for_wave(5) < ufo_interval_for_wave(0));
+        assert!(ufo_interval_for_wave(100) >= 5.0);
+        // 소형 확률: 웨이브↑ → 증가, [0,1]
+        assert!(small_ufo_probability_for_wave(10) > small_ufo_probability_for_wave(0));
+        assert!(small_ufo_probability_for_wave(100) <= 1.0);
     }
 }

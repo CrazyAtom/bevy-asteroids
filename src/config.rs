@@ -26,7 +26,8 @@ pub const UFO_BULLET_SPEED: f32 = 320.0;
 
 pub const STARTING_LIVES: u32 = 3;
 
-pub const INITIAL_ASTEROIDS: usize = 4;
+pub const BASE_ASTEROIDS: usize = 4;
+pub const MAX_ASTEROIDS: usize = 10;
 pub const ASTEROID_MIN_SPEED: f32 = 40.0;
 pub const ASTEROID_MAX_SPEED: f32 = 120.0;
 pub const ASTEROID_SPIN_MAX: f32 = 1.5; // rad/s (회전 각속도 범위 ±)
@@ -41,3 +42,4 @@ pub const UFO_LARGE_RADIUS: f32 = 20.0;
 pub const UFO_SMALL_RADIUS: f32 = 12.0;
 pub const UFO_FIRE_INTERVAL_SECS: f32 = 1.4;
 pub const UFO_SPAWN_INTERVAL_BASE: f32 = 12.0;
+pub const UFO_SPAWN_INTERVAL_MIN: f32 = 5.0;
