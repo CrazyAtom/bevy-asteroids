@@ -20,6 +20,10 @@ pub const BULLET_SPEED: f32 = 620.0;
 pub const BULLET_LIFETIME_SECS: f32 = 1.2;
 pub const BULLET_COLLIDER_RADIUS: f32 = 2.0;
 
+pub const ENEMY_BULLET_COLLIDER_RADIUS: f32 = 2.5;
+pub const UFO_BULLET_LIFETIME_SECS: f32 = 2.5;
+pub const UFO_BULLET_SPEED: f32 = 320.0;
+
 pub const STARTING_LIVES: u32 = 3;
 
 pub const INITIAL_ASTEROIDS: usize = 4;
