@@ -26,3 +26,8 @@ pub const INITIAL_ASTEROIDS: usize = 4;
 pub const ASTEROID_MIN_SPEED: f32 = 40.0;
 pub const ASTEROID_MAX_SPEED: f32 = 120.0;
 pub const ASTEROID_SPIN_MAX: f32 = 1.5; // rad/s (회전 각속도 범위 ±)
+
+pub const EXPLOSION_PARTICLES: usize = 10;
+pub const PARTICLE_LIFETIME_SECS: f32 = 0.6;
+pub const PARTICLE_SPEED_MIN: f32 = 60.0;
+pub const PARTICLE_SPEED_MAX: f32 = 200.0;

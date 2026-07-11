@@ -3,6 +3,7 @@ mod bullet;
 mod collision;
 mod components;
 mod config;
+mod effects;
 mod logic;
 mod movement;
 mod player;
@@ -29,6 +30,7 @@ fn main() {
         .add_plugins(bullet::BulletPlugin)
         .add_plugins(asteroid::AsteroidPlugin)
         .add_plugins(collision::CollisionPlugin)
+        .add_plugins(effects::EffectsPlugin)
         .add_plugins(ui::UiPlugin)
         .add_systems(Startup, setup_camera)
         .run();
