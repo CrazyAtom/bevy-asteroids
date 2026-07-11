@@ -158,10 +158,10 @@ fn apply_spin(time: Res<Time>, mut query: Query<(&mut Transform, &AngularVelocit
 `MovementPlugin::build` 를 다음으로 수정:
 
 ```rust
-        app.add_systems(FixedUpdate, (apply_velocity, wrap_around, apply_spin));
+        app.add_systems(FixedUpdate, ((apply_velocity, wrap_around).chain(), apply_spin));
 ```
 
-(`apply_spin` 은 순서 무관하므로 `.chain()` 밖에 두거나 함께 둬도 됨. 위처럼 튜플로 추가.)
+(위치 파이프라인 `apply_velocity → wrap_around` 는 `.chain()` 으로 순서를 반드시 유지. `apply_spin` 은 회전만 다뤄 위치와 무관하므로 체인 밖 독립 시스템으로 둔다.)
 
 - [ ] **Step 6: asteroid.rs — 스폰 시 랜덤 각속도 부여**
 
