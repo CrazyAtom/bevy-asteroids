@@ -66,7 +66,7 @@ fn bullet_vs_ufo(
     bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
     ufos: Query<(Entity, &Transform, &Collider, &Ufo)>,
 ) {
-    let mut destroyed: std::collections::HashSet<Entity> = std::collections::HashSet::new();
+    let mut destroyed: HashSet<Entity> = HashSet::new();
     for (bullet_entity, bullet_tf, bullet_col) in &bullets {
         for (ufo_entity, ufo_tf, ufo_col, ufo) in &ufos {
             if destroyed.contains(&ufo_entity) {
@@ -104,6 +104,7 @@ fn player_damage(
     let ppos = player_tf.translation.truncate();
     let pr = player_col.radius;
 
+    // 위험요소 확인 우선순위: 소행성 → UFO → 적 총알. 적 총알에 맞은 경우에만 해당 엔티티를 디스폰한다.
     let mut hit = false;
     for (a_tf, a_col) in &asteroids {
         if circles_overlap(ppos, pr, a_tf.translation.truncate(), a_col.radius) {

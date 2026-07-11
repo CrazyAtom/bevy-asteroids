@@ -53,6 +53,8 @@ fn setup_high_score(mut commands: Commands) {
             .format(StorageFormat::Json)
             .path(dir.join("highscore.json"))
             .default(state::HighScore(0))
+            .revertible(true)
+            .revert_to_default_on_deserialization_errors(true)
             .build()
             .expect("최고점수 리소스 초기화 실패"),
     );

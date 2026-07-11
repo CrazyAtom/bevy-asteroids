@@ -99,6 +99,13 @@ pub fn spawn_ufo(commands: &mut Commands, size: UfoSize, from_left: bool) {
     ));
 }
 
+/// 임의의 방향을 가리키는 단위 벡터(균등 분포, [0, 2π)).
+fn random_unit_dir() -> Vec2 {
+    let mut rng = rand::rng();
+    let angle = rng.random_range(0.0..std::f32::consts::TAU);
+    Vec2::new(angle.cos(), angle.sin())
+}
+
 fn ufo_fire(
     mut commands: Commands,
     time: Res<Time>,
@@ -115,17 +122,9 @@ fn ufo_fire(
         let dir = match ufo.size {
             UfoSize::Small => match player_pos {
                 Some(p) => aim_direction(origin, p),
-                None => {
-                    let mut rng = rand::rng();
-                    let a = rng.random_range(0.0..std::f32::consts::TAU);
-                    Vec2::new(a.cos(), a.sin())
-                }
+                None => random_unit_dir(),
             },
-            UfoSize::Large => {
-                let mut rng = rand::rng();
-                let a = rng.random_range(0.0..std::f32::consts::TAU);
-                Vec2::new(a.cos(), a.sin())
-            }
+            UfoSize::Large => random_unit_dir(),
         };
         spawn_enemy_bullet(&mut commands, origin, dir * UFO_BULLET_SPEED);
     }
