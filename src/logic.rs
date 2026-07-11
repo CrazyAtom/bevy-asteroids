@@ -70,6 +70,11 @@ pub fn apply_brake(velocity: Vec2, rate: f32, dt: f32) -> Vec2 {
     velocity.lerp(Vec2::ZERO, t)
 }
 
+/// from에서 to를 향하는 단위 벡터. 같은 지점이면 기본값 Vec2::Y.
+pub fn aim_direction(from: Vec2, to: Vec2) -> Vec2 {
+    (to - from).try_normalize().unwrap_or(Vec2::Y)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,5 +139,17 @@ mod tests {
         let braked = apply_brake(v, 3.0, 100.0); // 큰 dt
         assert!(braked.length() <= v.length());
         assert!(braked.x >= 0.0); // 반대로 튀지 않음
+    }
+
+    #[test]
+    fn aim_direction_points_toward_target() {
+        let d = aim_direction(Vec2::ZERO, Vec2::new(0.0, 10.0));
+        assert!((d - Vec2::new(0.0, 1.0)).length() < 1e-4);
+    }
+
+    #[test]
+    fn aim_direction_zero_defaults_up() {
+        let d = aim_direction(Vec2::ZERO, Vec2::ZERO);
+        assert!((d - Vec2::Y).length() < 1e-4);
     }
 }

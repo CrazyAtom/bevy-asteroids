@@ -1,10 +1,14 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
+use crate::bullet::spawn_enemy_bullet;
 use crate::components::{Collider, Velocity};
 use crate::config::{
-    HALF_HEIGHT, HALF_WIDTH, UFO_FIRE_INTERVAL_SECS, UFO_LARGE_RADIUS, UFO_SMALL_RADIUS, UFO_SPEED,
+    HALF_HEIGHT, HALF_WIDTH, UFO_BULLET_SPEED, UFO_FIRE_INTERVAL_SECS, UFO_LARGE_RADIUS,
+    UFO_SMALL_RADIUS, UFO_SPEED,
 };
+use crate::logic::aim_direction;
+use crate::player::Player;
 use crate::state::{GameState, GameplayEntity};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -40,7 +44,8 @@ impl Plugin for UfoPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (ufo_wobble, despawn_offscreen_ufo, draw_ufos).run_if(in_state(GameState::Playing)),
+            (ufo_wobble, ufo_fire, despawn_offscreen_ufo, draw_ufos)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -61,6 +66,38 @@ pub fn spawn_ufo(commands: &mut Commands, size: UfoSize, from_left: bool) {
         Collider { radius: size.radius() },
         GameplayEntity,
     ));
+}
+
+fn ufo_fire(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut ufos: Query<(&Transform, &mut Ufo)>,
+    players: Query<&Transform, With<Player>>,
+) {
+    let player_pos = players.single().ok().map(|t| t.translation.truncate());
+    for (ufo_tf, mut ufo) in &mut ufos {
+        ufo.fire_timer.tick(time.delta());
+        if !ufo.fire_timer.is_finished() {
+            continue;
+        }
+        let origin = ufo_tf.translation.truncate();
+        let dir = match ufo.size {
+            UfoSize::Small => match player_pos {
+                Some(p) => aim_direction(origin, p),
+                None => {
+                    let mut rng = rand::rng();
+                    let a = rng.random_range(0.0..std::f32::consts::TAU);
+                    Vec2::new(a.cos(), a.sin())
+                }
+            },
+            UfoSize::Large => {
+                let mut rng = rand::rng();
+                let a = rng.random_range(0.0..std::f32::consts::TAU);
+                Vec2::new(a.cos(), a.sin())
+            }
+        };
+        spawn_enemy_bullet(&mut commands, origin, dir * UFO_BULLET_SPEED);
+    }
 }
 
 /// 수직 사인 흔들림(수평 이동은 apply_velocity가 처리).
