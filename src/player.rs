@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::components::{Collider, Velocity, Wrapping};
-use crate::config::{SHIP_COLLIDER_RADIUS, SHIP_ROTATION_SPEED, SHIP_THRUST};
+use crate::config::{
+    SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED, SHIP_THRUST,
+};
 use crate::state::{GameState, GameplayEntity};
 
 #[derive(Component)]
@@ -24,6 +26,10 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 (player_input, draw_player).run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(
+                FixedUpdate,
+                apply_ship_damping.run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -63,6 +69,16 @@ fn player_input(
             let forward = (transform.rotation * Vec3::Y).truncate();
             velocity.0 += forward * SHIP_THRUST * dt;
         }
+    }
+}
+
+/// 우주선 전용 감속(마찰)과 최고 속도 제한. FixedUpdate에서 매 틱 실행돼
+/// 추진을 멈추면 속도가 서서히 줄어 정지하고, 속도가 상한을 넘지 않게 한다.
+/// 소행성·총알에는 적용되지 않으므로 그들은 등속을 유지한다.
+fn apply_ship_damping(mut query: Query<&mut Velocity, With<Player>>) {
+    for mut velocity in &mut query {
+        velocity.0 *= SHIP_DAMPING;
+        velocity.0 = velocity.0.clamp_length_max(SHIP_MAX_SPEED);
     }
 }
 
@@ -118,5 +134,31 @@ mod tests {
         // 좌회전 → z축 회전각 > 0
         let (_, angle) = t.rotation.to_axis_angle();
         assert!(angle > 0.0);
+    }
+
+    #[test]
+    fn ship_damping_reduces_speed_but_keeps_direction() {
+        let mut app = App::new();
+        let e = app
+            .world_mut()
+            .spawn((Player, Velocity(Vec2::new(200.0, 0.0))))
+            .id();
+        app.world_mut().run_system_once(apply_ship_damping).unwrap();
+        let v = app.world().entity(e).get::<Velocity>().unwrap();
+        // 감속하되(속도 감소) 방향은 유지(+x)
+        assert!(v.0.x < 200.0);
+        assert!(v.0.x > 0.0);
+    }
+
+    #[test]
+    fn ship_speed_is_capped_at_max() {
+        let mut app = App::new();
+        let e = app
+            .world_mut()
+            .spawn((Player, Velocity(Vec2::new(10_000.0, 0.0))))
+            .id();
+        app.world_mut().run_system_once(apply_ship_damping).unwrap();
+        let v = app.world().entity(e).get::<Velocity>().unwrap();
+        assert!(v.0.length() <= SHIP_MAX_SPEED + 1e-3);
     }
 }
