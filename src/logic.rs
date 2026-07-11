@@ -23,6 +23,14 @@ impl AsteroidSize {
             AsteroidSize::Small => 100,
         }
     }
+
+    pub fn speed_scale(self) -> f32 {
+        match self {
+            AsteroidSize::Large => 1.0,
+            AsteroidSize::Medium => 1.5,
+            AsteroidSize::Small => 2.2,
+        }
+    }
 }
 
 pub fn next_asteroid_size(size: AsteroidSize) -> Option<AsteroidSize> {
@@ -97,5 +105,12 @@ mod tests {
     #[test]
     fn circles_overlap_false_when_far() {
         assert!(!circles_overlap(Vec2::ZERO, 5.0, Vec2::new(20.0, 0.0), 5.0));
+    }
+
+    #[test]
+    fn smaller_asteroids_are_faster() {
+        assert!(AsteroidSize::Small.speed_scale() > AsteroidSize::Medium.speed_scale());
+        assert!(AsteroidSize::Medium.speed_scale() > AsteroidSize::Large.speed_scale());
+        assert_eq!(AsteroidSize::Large.speed_scale(), 1.0);
     }
 }
