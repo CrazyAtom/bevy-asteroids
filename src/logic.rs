@@ -92,6 +92,10 @@ pub fn small_ufo_probability_for_wave(wave: u32) -> f32 {
     (0.2 + wave as f32 * 0.05).min(0.9)
 }
 
+pub fn update_high_score(current: u32, new: u32) -> u32 {
+    current.max(new)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,6 +172,13 @@ mod tests {
     fn aim_direction_zero_defaults_up() {
         let d = aim_direction(Vec2::ZERO, Vec2::ZERO);
         assert!((d - Vec2::Y).length() < 1e-4);
+    }
+
+    #[test]
+    fn high_score_keeps_maximum() {
+        assert_eq!(update_high_score(100, 250), 250);
+        assert_eq!(update_high_score(300, 250), 300);
+        assert_eq!(update_high_score(0, 0), 0);
     }
 
     #[test]

@@ -5,7 +5,10 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.19"
+bevy-persistent = { version = "0.11.0", features = ["json"] }
+dirs = "6.0.0"
 rand = "0.10"
+serde = { version = "1.0.228", features = ["derive"] }
 
 # 내 코드는 빠르게 증분 컴파일하되, 의존성(bevy 등)은 최적화해 런타임 성능 확보
 [profile.dev.package."*"]

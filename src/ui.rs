@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use bevy::text::FontSize;
+use bevy_persistent::prelude::*;
 
-use crate::state::{GameState, GameplayEntity, Lives, Score};
+use crate::state::{GameState, GameplayEntity, HighScore, Lives, Score};
 
 #[derive(Component)]
 struct Hud;
@@ -37,16 +38,24 @@ fn spawn_hud(mut commands: Commands) {
     ));
 }
 
-fn update_hud(score: Res<Score>, lives: Res<Lives>, mut query: Query<&mut Text, With<Hud>>) {
+fn update_hud(
+    score: Res<Score>,
+    lives: Res<Lives>,
+    high: Res<Persistent<HighScore>>,
+    mut query: Query<&mut Text, With<Hud>>,
+) {
     for mut text in &mut query {
-        text.0 = format!("Score: {}   Lives: {}", score.0, lives.0);
+        text.0 = format!("Score: {}   Lives: {}   High: {}", score.0, lives.0, high.0);
     }
 }
 
-fn spawn_game_over(mut commands: Commands, score: Res<Score>) {
+fn spawn_game_over(mut commands: Commands, score: Res<Score>, high: Res<Persistent<HighScore>>) {
     commands.spawn((
         GameOverScreen,
-        Text::new(format!("GAME OVER\nScore: {}\nPress R to restart", score.0)),
+        Text::new(format!(
+            "GAME OVER\nScore: {}\nHigh: {}\nPress R to restart",
+            score.0, high.0
+        )),
         TextFont { font_size: FontSize::Px(40.0), ..default() },
         TextColor(Color::WHITE),
         Node {
@@ -80,10 +89,19 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(Score(150));
         app.insert_resource(Lives(2));
+        let hs = Persistent::<HighScore>::builder()
+            .name("test high score")
+            .format(StorageFormat::Json)
+            .path(std::env::temp_dir().join("bevy-asteroids-test").join("highscore.json"))
+            .default(HighScore(0))
+            .build()
+            .unwrap();
+        app.insert_resource(hs);
         let e = app.world_mut().spawn((Hud, Text::new("초기값"))).id();
         app.world_mut().run_system_once(update_hud).unwrap();
         let text = app.world().entity(e).get::<Text>().unwrap();
         assert!(text.0.contains("150"));
         assert!(text.0.contains('2'));
+        assert!(text.0.contains("High: 0"));
     }
 }

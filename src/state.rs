@@ -1,6 +1,9 @@
 use bevy::prelude::*;
+use bevy_persistent::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::config::STARTING_LIVES;
+use crate::logic::update_high_score;
 
 #[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum GameState {
@@ -18,6 +21,9 @@ pub struct Lives(pub u32);
 #[derive(Resource)]
 pub struct Wave(pub u32);
 
+#[derive(Resource, Serialize, Deserialize, Default)]
+pub struct HighScore(pub u32);
+
 /// 한 판(Playing) 동안 존재하는 모든 엔티티에 붙는 마커. 판이 끝나면 일괄 정리된다.
 #[derive(Component)]
 pub struct GameplayEntity;
@@ -31,7 +37,8 @@ impl Plugin for GameStatePlugin {
             .insert_resource(Lives(STARTING_LIVES))
             .insert_resource(Wave(1))
             .add_systems(OnEnter(GameState::Playing), reset_game)
-            .add_systems(OnExit(GameState::Playing), despawn_gameplay_entities);
+            .add_systems(OnExit(GameState::Playing), despawn_gameplay_entities)
+            .add_systems(OnEnter(GameState::GameOver), save_high_score);
     }
 }
 
@@ -44,5 +51,13 @@ fn reset_game(mut score: ResMut<Score>, mut lives: ResMut<Lives>, mut wave: ResM
 fn despawn_gameplay_entities(mut commands: Commands, query: Query<Entity, With<GameplayEntity>>) {
     for entity in &query {
         commands.entity(entity).despawn();
+    }
+}
+
+fn save_high_score(score: Res<Score>, mut high: ResMut<Persistent<HighScore>>) {
+    let updated = update_high_score(high.0, score.0);
+    if updated != high.0 {
+        high.0 = updated;
+        let _ = high.persist();
     }
 }
