@@ -64,6 +64,12 @@ pub fn circles_overlap(a: Vec2, ra: f32, b: Vec2, rb: f32) -> bool {
     a.distance_squared(b) <= r * r
 }
 
+/// 속도를 0쪽으로 감쇠(브레이크). t는 [0,1]로 클램프해 반대로 튀지 않게 한다.
+pub fn apply_brake(velocity: Vec2, rate: f32, dt: f32) -> Vec2 {
+    let t = (rate * dt).clamp(0.0, 1.0);
+    velocity.lerp(Vec2::ZERO, t)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -112,5 +118,21 @@ mod tests {
         assert!(AsteroidSize::Small.speed_scale() > AsteroidSize::Medium.speed_scale());
         assert!(AsteroidSize::Medium.speed_scale() > AsteroidSize::Large.speed_scale());
         assert_eq!(AsteroidSize::Large.speed_scale(), 1.0);
+    }
+
+    #[test]
+    fn brake_reduces_speed_toward_zero() {
+        let v = Vec2::new(100.0, 0.0);
+        let braked = apply_brake(v, 3.0, 0.1);
+        assert!(braked.length() < v.length());
+        assert!(braked.x > 0.0); // 방향 유지, 아직 0 아님
+    }
+
+    #[test]
+    fn brake_never_overshoots_past_zero() {
+        let v = Vec2::new(10.0, 0.0);
+        let braked = apply_brake(v, 3.0, 100.0); // 큰 dt
+        assert!(braked.length() <= v.length());
+        assert!(braked.x >= 0.0); // 반대로 튀지 않음
     }
 }

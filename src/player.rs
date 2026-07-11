@@ -2,8 +2,10 @@ use bevy::prelude::*;
 
 use crate::components::{Collider, Velocity, Wrapping};
 use crate::config::{
-    SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED, SHIP_THRUST,
+    SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
+    SHIP_THRUST,
 };
+use crate::logic::apply_brake;
 use crate::state::{GameState, GameplayEntity};
 
 #[derive(Component)]
@@ -68,6 +70,10 @@ fn player_input(
         if keys.pressed(KeyCode::ArrowUp) {
             let forward = (transform.rotation * Vec3::Y).truncate();
             velocity.0 += forward * SHIP_THRUST * dt;
+        }
+
+        if keys.pressed(KeyCode::ArrowDown) {
+            velocity.0 = apply_brake(velocity.0, SHIP_BRAKE_RATE, dt);
         }
     }
 }
