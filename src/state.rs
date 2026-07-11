@@ -15,7 +15,7 @@ pub struct Score(pub u32);
 #[derive(Resource)]
 pub struct Lives(pub u32);
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct Wave(pub u32);
 
 /// 한 판(Playing) 동안 존재하는 모든 엔티티에 붙는 마커. 판이 끝나면 일괄 정리된다.

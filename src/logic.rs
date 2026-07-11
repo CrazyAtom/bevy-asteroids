@@ -185,5 +185,11 @@ mod tests {
         // 소형 확률: 웨이브↑ → 증가, [0,1]
         assert!(small_ufo_probability_for_wave(10) > small_ufo_probability_for_wave(0));
         assert!(small_ufo_probability_for_wave(100) <= 1.0);
+
+        // 캡 경계값 고정: 큰 웨이브에서 상한/하한이 정확히 걸리는지
+        assert_eq!(asteroid_count_for_wave(1000), 10);            // 개수 상한
+        assert_eq!(asteroid_speed_scale_for_wave(1000), 2.0);     // 속도 배수 상한
+        assert_eq!(ufo_interval_for_wave(1000), 5.0);             // UFO 간격 하한
+        assert_eq!(small_ufo_probability_for_wave(1000), 0.9);    // 소형 확률 상한
     }
 }
