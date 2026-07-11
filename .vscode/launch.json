@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug bevy-asteroids",
+      "cargo": {
+        "args": ["build", "--bin=bevy-asteroids"],
+        "filter": { "name": "bevy-asteroids", "kind": "bin" }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug bevy-asteroids (fast dev)",
+      "cargo": {
+        "args": ["build", "--bin=bevy-asteroids", "--features", "bevy/dynamic_linking"],
+        "filter": { "name": "bevy-asteroids", "kind": "bin" }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--bin=bevy-asteroids"],
+        "filter": { "name": "bevy-asteroids", "kind": "bin" }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

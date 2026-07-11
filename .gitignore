@@ -5,5 +5,8 @@
 # macOS
 .DS_Store
 
-# Editor
-.vscode/
+# Editor — 공유 설정은 추적, 개인 설정(settings.json)만 무시
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

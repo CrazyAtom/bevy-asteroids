@@ -1,0 +1,50 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "cargo build",
+      "problemMatcher": ["$rustc"],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "build (fast dev, dynamic_linking)",
+      "type": "shell",
+      "command": "cargo build --features bevy/dynamic_linking",
+      "problemMatcher": ["$rustc"],
+      "group": "build"
+    },
+    {
+      "label": "run",
+      "type": "shell",
+      "command": "cargo run",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "run (fast dev, dynamic_linking)",
+      "type": "shell",
+      "command": "cargo run --features bevy/dynamic_linking",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "run (release)",
+      "type": "shell",
+      "command": "cargo run --release",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "cargo test",
+      "problemMatcher": ["$rustc"],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "clippy",
+      "type": "shell",
+      "command": "cargo clippy --all-targets",
+      "problemMatcher": ["$rustc"]
+    }
+  ]
+}
