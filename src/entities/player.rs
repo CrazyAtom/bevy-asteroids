@@ -4,7 +4,7 @@ use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
     BEAM_LENGTH, BEAM_LIFETIME_SECS, FLAME_COLOR, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
     SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
-    SHIP_ROTATION_SPEED, SHIP_THRUST,
+    SHIP_ROTATION_SPEED, SHIP_THRUST, STARTING_SPECIAL_CHARGES,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
@@ -108,7 +108,7 @@ pub fn spawn_player_entity(commands: &mut Commands) {
             t.tick(t.duration()); // 시작 시 준비완료
             t
         }),
-        SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: 0 },
+        SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: STARTING_SPECIAL_CHARGES },
         HyperspaceCooldown({
             let mut t = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
             t.tick(t.duration()); // 시작 시 준비완료
@@ -309,6 +309,18 @@ mod tests {
     use crate::core::components::Velocity;
     use bevy::ecs::system::RunSystemOnce;
     use std::time::Duration;
+
+    #[test]
+    fn player_starts_with_special_charge() {
+        let mut app = App::new();
+        app.world_mut().run_system_once(spawn_player).unwrap();
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&SpecialWeapon, With<Player>>();
+        let weapon = q.single(app.world()).unwrap();
+        assert_eq!(weapon.charges, STARTING_SPECIAL_CHARGES);
+        assert!(weapon.charges > 0, "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
+    }
 
     #[test]
     fn thrust_accelerates_forward() {

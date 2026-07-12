@@ -70,6 +70,7 @@ pub const POWERUP_RADIUS: f32 = 12.0;
 pub const SHIELD_SECS: f32 = 5.0;
 
 // Phase 3 — 특수무기
+pub const STARTING_SPECIAL_CHARGES: u32 = 1; // 게임 시작 시 보유한 특수무기 충전 수
 pub const BEAM_LIFETIME_SECS: f32 = 0.4;
 pub const BEAM_WIDTH: f32 = 22.0;
 pub const BEAM_LENGTH: f32 = 2000.0;
