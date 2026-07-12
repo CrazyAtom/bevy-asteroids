@@ -71,7 +71,7 @@ fn bullet_vs_asteroid(
                 {
                     let mut rng = rand::rng();
                     if rng.random_range(0.0..1.0) < POWERUP_DROP_CHANCE {
-                        spawn_powerup(&mut commands, pick_powerup_kind(rng.random_range(0.0..1.0)), asteroid_tf.translation.truncate());
+                        spawn_powerup(&mut commands, &assets, pick_powerup_kind(rng.random_range(0.0..1.0)), asteroid_tf.translation.truncate());
                     }
                 }
                 break; // 이 총알은 소진됨
@@ -80,8 +80,10 @@ fn bullet_vs_asteroid(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn bullet_vs_ufo(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     mut score: ResMut<Score>,
     mut shake: MessageWriter<ShakeEvent>,
     mut sfx: MessageWriter<SfxEvent>,
@@ -110,7 +112,7 @@ fn bullet_vs_ufo(
                 {
                     let mut rng = rand::rng();
                     if rng.random_range(0.0..1.0) < POWERUP_DROP_CHANCE {
-                        spawn_powerup(&mut commands, pick_powerup_kind(rng.random_range(0.0..1.0)), ufo_tf.translation.truncate());
+                        spawn_powerup(&mut commands, &assets, pick_powerup_kind(rng.random_range(0.0..1.0)), ufo_tf.translation.truncate());
                     }
                 }
                 break;
