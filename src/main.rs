@@ -9,14 +9,25 @@ use bevy_persistent::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Bevy Asteroids".into(),
-                resolution: (1280, 720).into(),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Bevy Asteroids".into(),
+                        resolution: (1280, 720).into(),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                // IDE(F5)나 바이너리 직접 실행 시 CARGO_MANIFEST_DIR가 없어 Bevy가
+                // 실행 파일 옆(target/debug/assets)에서 에셋을 찾는 문제를 방지한다.
+                // 컴파일 타임 프로젝트 경로를 박아, 실행 방식과 무관하게 항상
+                // <project>/assets 에서 에셋(사운드 WAV)을 찾게 한다.
+                .set(AssetPlugin {
+                    file_path: concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_string(),
+                    ..default()
+                }),
+        )
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(Time::<Fixed>::from_hz(60.0))
         .add_plugins(systems::movement::MovementPlugin)
