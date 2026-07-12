@@ -12,7 +12,7 @@
 
 - Bevy `0.19`, rand `0.10`. Phase 1·2 검증 API 재사용(`ButtonInput`/`Res<Time>`/`transform`/States/Gizmos/`Timer::is_finished`/`rand::rng()`+`RngExt`/`run_system_once`/`Time::<()>::default()`/상태 테스트 `StatesPlugin`).
 - **오디오**: `bevy = { version = "0.19", features = ["wav"] }` (WAV 재생에 필요). 재생 = `commands.spawn((AudioPlayer::new(handle), PlaybackSettings::DESPAWN))`; 로드 = `asset_server.load::<AudioSource>("sounds/<name>.wav")`.
-- **이벤트**: `#[derive(Event)] struct X;` + `app.add_event::<X>()` + `EventWriter<X>`/`EventReader<X>`.
+- **이벤트**: `#[derive(Message)] struct X;` + `app.add_message::<X>()` + `MessageWriter<X>`/`MessageReader<X>`.
 - 렌더는 Gizmos만(사운드/오디오 제외). 게임 진행 중 스폰 엔티티(파워업·빔 등)는 `GameplayEntity` 부여. UFO/적총알/파티클/파워업/빔은 `Wrapping` 없음. 별은 `GameplayEntity` 아님(항상 표시).
 - 커밋 메시지 한국어.
 - **폴더 재구성(Task 1) 이후 모든 import 경로는 그룹 접두사**를 쓴다: `crate::core::{config,logic,components,state}`, `crate::entities::{player,bullet,asteroid,ufo,powerup}`, `crate::systems::{movement,collision}`, `crate::fx::{effects,background,shake,audio}`, `crate::ui`.
@@ -221,7 +221,7 @@ git commit -m "feat: 반짝이는 별 배경"
 **Files:** Create `src/fx/shake.rs`; Modify `src/fx.rs`, `src/main.rs`, `src/core/config.rs`, `src/core/logic.rs`(순수 함수), `src/systems/collision.rs`(트리거).
 
 **Interfaces:**
-- Produces: `shake::ShakePlugin`, `#[derive(Resource, Default)] ScreenShake { trauma: f32 }`, `#[derive(Event)] ShakeEvent(pub f32)`. `apply_screen_shake`가 카메라를 흔든다.
+- Produces: `shake::ShakePlugin`, `#[derive(Resource, Default)] ScreenShake { trauma: f32 }`, `#[derive(Message)] ShakeEvent(pub f32)`. `apply_screen_shake`가 카메라를 흔든다.
 - Produces(logic): `logic::decay_trauma(trauma: f32, dt: f32) -> f32`.
 - Consumes: `config::{MAX_SHAKE_OFFSET, SHAKE_DECAY, SHAKE_HIT, SHAKE_EXPLOSION}`.
 
@@ -272,7 +272,7 @@ pub struct ScreenShake {
     pub trauma: f32,
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct ShakeEvent(pub f32);
 
 pub struct ShakePlugin;
@@ -280,7 +280,7 @@ pub struct ShakePlugin;
 impl Plugin for ShakePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScreenShake>()
-            .add_event::<ShakeEvent>()
+            .add_message::<ShakeEvent>()
             .add_systems(Update, apply_screen_shake);
     }
 }
@@ -288,7 +288,7 @@ impl Plugin for ShakePlugin {
 fn apply_screen_shake(
     time: Res<Time>,
     mut shake: ResMut<ScreenShake>,
-    mut events: EventReader<ShakeEvent>,
+    mut events: MessageReader<ShakeEvent>,
     mut camera: Query<&mut Transform, With<Camera2d>>,
 ) {
     for ShakeEvent(amount) in events.read() {
@@ -314,11 +314,11 @@ fn apply_screen_shake(
 
 - [ ] **Step 7: collision.rs에서 흔들림 트리거**
 
-collision.rs 상단에 `use crate::fx::shake::ShakeEvent;`, `use crate::core::config::{SHAKE_EXPLOSION, SHAKE_HIT};` 추가. 두 시스템에 `mut shake: EventWriter<ShakeEvent>` 파라미터를 추가하고:
+collision.rs 상단에 `use crate::fx::shake::ShakeEvent;`, `use crate::core::config::{SHAKE_EXPLOSION, SHAKE_HIT};` 추가. 두 시스템에 `mut shake: MessageWriter<ShakeEvent>` 파라미터를 추가하고:
 - `bullet_vs_asteroid`/`bullet_vs_ufo`의 폭발 지점에서 `shake.write(ShakeEvent(SHAKE_EXPLOSION));`
 - `player_damage`의 피격 처리에서 `shake.write(ShakeEvent(SHAKE_HIT));`
 
-(EventWriter 메서드는 0.19에서 `write`. 만약 컴파일 오류면 설치 소스 확인 후 올바른 메서드(`send`)로 대체하고 보고.)
+(MessageWriter 메서드는 0.19에서 `write`. 만약 컴파일 오류면 설치 소스 확인 후 올바른 메서드(`send`)로 대체하고 보고.)
 
 - [ ] **Step 8: 통과 확인 + 빌드** — Run: `cargo test` → PASS. `cargo build` → 성공.
 
@@ -336,8 +336,8 @@ git commit -m "feat: 피격·폭발 시 화면 흔들림"
 **Files:** Create `build.rs`, `src/fx/audio.rs`; Modify `Cargo.toml`(`features=["wav"]`), `.gitignore`, `src/fx.rs`, `src/main.rs`, 그리고 소리 트리거를 붙이는 `entities/bullet.rs`·`entities/ufo.rs`·`systems/collision.rs`·`core/state.rs`.
 
 **Interfaces:**
-- Produces: `#[derive(Event)] SfxEvent(pub Sfx)`, `enum Sfx { Fire, Explosion, Thrust(사용 안 함 가능), UfoFire, Pickup, Special, Hyperspace, GameOver }`, `audio::AudioPlugin`, `SfxAssets` 리소스, `play_sfx` 시스템.
-- 소리를 내는 시스템은 `EventWriter<SfxEvent>`로 이벤트만 발행.
+- Produces: `#[derive(Message)] SfxEvent(pub Sfx)`, `enum Sfx { Fire, Explosion, Thrust(사용 안 함 가능), UfoFire, Pickup, Special, Hyperspace, GameOver }`, `audio::AudioPlugin`, `SfxAssets` 리소스, `play_sfx` 시스템.
+- 소리를 내는 시스템은 `MessageWriter<SfxEvent>`로 이벤트만 발행.
 
 - [ ] **Step 1: Cargo.toml — wav feature + build 스크립트 인지**
 
@@ -459,18 +459,18 @@ impl Sfx {
     }
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct SfxEvent(pub Sfx);
 
 pub struct AudioPlugin;
 
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SfxEvent>().add_systems(Update, play_sfx);
+        app.add_message::<SfxEvent>().add_systems(Update, play_sfx);
     }
 }
 
-fn play_sfx(mut commands: Commands, asset_server: Res<AssetServer>, mut events: EventReader<SfxEvent>) {
+fn play_sfx(mut commands: Commands, asset_server: Res<AssetServer>, mut events: MessageReader<SfxEvent>) {
     for SfxEvent(sfx) in events.read() {
         commands.spawn((
             AudioPlayer::<AudioSource>::new(asset_server.load(sfx.file())),
@@ -489,12 +489,12 @@ use GameState as _GameStateUsed;
 
 - [ ] **Step 6: 소리 트리거 배선 (이벤트 발행)**
 
-- `entities/bullet.rs` `fire_bullet`: 발사 성공 시 `sfx.write(SfxEvent(Sfx::Fire))` (시그니처에 `mut sfx: EventWriter<SfxEvent>` 추가, `use crate::fx::audio::{Sfx, SfxEvent};`).
+- `entities/bullet.rs` `fire_bullet`: 발사 성공 시 `sfx.write(SfxEvent(Sfx::Fire))` (시그니처에 `mut sfx: MessageWriter<SfxEvent>` 추가, `use crate::fx::audio::{Sfx, SfxEvent};`).
 - `entities/ufo.rs` `ufo_fire`: 발사 시 `SfxEvent(Sfx::UfoFire)`.
 - `systems/collision.rs`: 폭발 지점(소행성/UFO 파괴)에서 `SfxEvent(Sfx::Explosion)`.
 - `core/state.rs` `save_high_score`(OnEnter GameOver) 근처 또는 별도 OnEnter(GameOver) 시스템에서 `SfxEvent(Sfx::GameOver)` 1회.
 
-각 시스템에 `EventWriter<SfxEvent>` 파라미터를 추가한다.
+각 시스템에 `MessageWriter<SfxEvent>` 파라미터를 추가한다.
 
 - [ ] **Step 7: 빌드·실행 확인** — Run: `cargo build`(build.rs가 `assets/sounds/*.wav` 생성). `ls assets/sounds` 로 7개 wav 확인. `cargo test` → 기존 통과 유지. (수동: `cargo run` 으로 발사·폭발 소리 확인 — 사용자 몫.)
 
@@ -548,7 +548,7 @@ fn fire_bullet(
     mut commands: Commands,
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut sfx: EventWriter<SfxEvent>,
+    mut sfx: MessageWriter<SfxEvent>,
     mut query: Query<(&Transform, &mut FireCooldown), With<Player>>,
 ) {
     let Ok((ship, mut cooldown)) = query.single_mut() else {
@@ -581,7 +581,7 @@ fn fire_bullet(
     fn fires_only_when_cooldown_ready() {
         use crate::entities::player::{FireCooldown, Player};
         let mut app = App::new();
-        app.add_event::<SfxEvent>();
+        app.add_message::<SfxEvent>();
         let mut time = Time::<()>::default();
         time.advance_by(std::time::Duration::from_secs_f32(1.0));
         app.insert_resource(time);
@@ -763,7 +763,7 @@ fn draw_powerups(mut gizmos: Gizmos, q: Query<(&Transform, &Powerup)>) {
 fn collect_powerup(
     mut commands: Commands,
     mut lives: ResMut<Lives>,
-    mut sfx: EventWriter<SfxEvent>,
+    mut sfx: MessageWriter<SfxEvent>,
     players: Query<(Entity, &Transform, &Collider), With<Player>>,
     powerups: Query<(Entity, &Transform, &Collider, &Powerup)>,
 ) {
@@ -992,7 +992,7 @@ fn tick_fire_mods(
     fn spread_fires_three_bullets() {
         use crate::entities::player::{FireCooldown, Player, Spread};
         let mut app = App::new();
-        app.add_event::<SfxEvent>();
+        app.add_message::<SfxEvent>();
         let mut time = Time::<()>::default();
         time.advance_by(std::time::Duration::from_secs_f32(1.0));
         app.insert_resource(time);
@@ -1089,8 +1089,8 @@ pub struct SpecialBeam {
 fn activate_special(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
-    mut sfx: EventWriter<crate::fx::audio::SfxEvent>,
-    mut shake: EventWriter<crate::fx::shake::ShakeEvent>,
+    mut sfx: MessageWriter<crate::fx::audio::SfxEvent>,
+    mut shake: MessageWriter<crate::fx::shake::ShakeEvent>,
     mut query: Query<(&Transform, &mut SpecialWeapon), With<Player>>,
 ) {
     if !keys.just_pressed(KeyCode::KeyX) {
@@ -1145,7 +1145,7 @@ collision.rs에 시스템 추가(`use crate::entities::player::SpecialBeam;`, `u
 fn beam_vs_targets(
     mut commands: Commands,
     mut score: ResMut<Score>,
-    mut sfx: EventWriter<SfxEvent>,
+    mut sfx: MessageWriter<SfxEvent>,
     beams: Query<&SpecialBeam>,
     asteroids: Query<(Entity, &Transform, &Collider, &Asteroid)>,
     ufos: Query<(Entity, &Transform, &Collider, &Ufo)>,
@@ -1241,7 +1241,7 @@ pub fn random_hyperspace_position(half: Vec2) -> Vec2 {
 fn hyperspace(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut sfx: EventWriter<crate::fx::audio::SfxEvent>,
+    mut sfx: MessageWriter<crate::fx::audio::SfxEvent>,
     mut query: Query<(&mut Transform, &mut crate::core::components::Velocity, &mut HyperspaceCooldown), With<Player>>,
 ) {
     let Ok((mut transform, mut velocity, mut cooldown)) = query.single_mut() else { return; };
@@ -1331,7 +1331,7 @@ git commit -m "feat: HUD에 특수무기 충전과 활성 파워업 표시"
 
 **3. Type consistency:** `PowerupKind`/`SpecialWeaponKind`(powerup.rs, Task 6)는 7·8·9에서 동일 사용. `SfxEvent`/`Sfx`(audio, Task 4)는 5·6·9·10에서, `ShakeEvent`(Task 3)는 9에서, `segment_circle_hit`(logic, Task 9)는 collision에서, `FireCooldown`(Task 5)은 8에서 일관. 새 경로(`crate::core::*` 등)는 Task 1 이후 전 태스크에서 사용.
 
-**알려진 판단 포인트(구현 시 컴파일러 기준):** `EventWriter::write` vs `send`(0.19 메서드명 — 오류 시 소스 확인 후 대체), `AudioPlayer::<AudioSource>::new` 제네릭 표기, `Query::single_mut` 반환형. Phase 1·2처럼 구현자가 소스 근거로 조정·보고.
+**알려진 판단 포인트(구현 시 컴파일러 기준):** `MessageWriter::write` vs `send`(0.19 메서드명 — 오류 시 소스 확인 후 대체), `AudioPlayer::<AudioSource>::new` 제네릭 표기, `Query::single_mut` 반환형. Phase 1·2처럼 구현자가 소스 근거로 조정·보고.
 
 ---
 
