@@ -160,6 +160,7 @@ fn beam_vs_targets(
 #[allow(clippy::too_many_arguments)]
 fn player_damage(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     mut lives: ResMut<Lives>,
     mut next_state: ResMut<NextState<GameState>>,
     mut shake: MessageWriter<ShakeEvent>,
@@ -213,7 +214,7 @@ fn player_damage(
     if lives.0 == 0 {
         next_state.set(GameState::GameOver);
     } else {
-        spawn_player_entity(&mut commands);
+        spawn_player_entity(&mut commands, &assets);
     }
 }
 

@@ -2,15 +2,16 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
-    BEAM_LENGTH, BEAM_LIFETIME_SECS, FLAME_COLOR, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
-    SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
-    SHIP_ROTATION_SPEED, SHIP_THRUST, STARTING_SPECIAL_CHARGES,
+    BEAM_LENGTH, BEAM_LIFETIME_SECS, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL, SHIP_BRAKE_RATE,
+    SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED, SHIP_THRUST,
+    STARTING_SPECIAL_CHARGES, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
 use crate::entities::powerup::SpecialWeaponKind;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::shake::ShakeEvent;
+use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 
 #[derive(Component)]
 pub struct Player;
@@ -49,14 +50,9 @@ pub struct SpecialBeam {
     pub dir: Vec2,
 }
 
-/// 우주선 로컬 좌표(정면 = +Y). 마지막 점은 첫 점과 같아 닫힌 외곽선을 만든다.
-const SHIP_POINTS: [Vec2; 5] = [
-    Vec2::new(0.0, 16.0),
-    Vec2::new(-11.0, -12.0),
-    Vec2::new(0.0, -6.0),
-    Vec2::new(11.0, -12.0),
-    Vec2::new(0.0, 16.0),
-];
+/// 추진/브레이크 시 우주선 뒤/앞에 나타나는 화염 스프라이트(자식 엔티티) 마커.
+#[derive(Component)]
+pub struct Flame;
 
 pub struct PlayerPlugin;
 
@@ -67,7 +63,7 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     player_input,
-                    draw_player,
+                    update_flame,
                     shield_tick,
                     draw_shield,
                     tick_fire_mods,
@@ -94,31 +90,49 @@ pub fn random_hyperspace_position(half: Vec2) -> Vec2 {
     )
 }
 
-pub fn spawn_player_entity(commands: &mut Commands) {
-    commands.spawn((
-        Player,
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        Velocity(Vec2::ZERO),
-        Collider { radius: SHIP_COLLIDER_RADIUS },
-        Wrapping,
-        GameplayEntity,
-        EngineState::default(),
-        FireCooldown({
-            let mut t = Timer::from_seconds(crate::core::config::FIRE_INTERVAL, TimerMode::Once);
-            t.tick(t.duration()); // 시작 시 준비완료
-            t
-        }),
-        SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: STARTING_SPECIAL_CHARGES },
-        HyperspaceCooldown({
-            let mut t = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
-            t.tick(t.duration()); // 시작 시 준비완료
-            t
-        }),
-    ));
+pub fn spawn_player_entity(commands: &mut Commands, assets: &SpriteAssets) {
+    commands
+        .spawn((
+            Player,
+            Sprite {
+                image: assets.ship.clone(),
+                custom_size: Some(sprite_size_for(SHIP_COLLIDER_RADIUS)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, Z_ENTITY),
+            Velocity(Vec2::ZERO),
+            Collider { radius: SHIP_COLLIDER_RADIUS },
+            Wrapping,
+            GameplayEntity,
+            EngineState::default(),
+            FireCooldown({
+                let mut t = Timer::from_seconds(crate::core::config::FIRE_INTERVAL, TimerMode::Once);
+                t.tick(t.duration()); // 시작 시 준비완료
+                t
+            }),
+            SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: STARTING_SPECIAL_CHARGES },
+            HyperspaceCooldown({
+                let mut t = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
+                t.tick(t.duration()); // 시작 시 준비완료
+                t
+            }),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Flame,
+                Sprite {
+                    image: assets.flame.clone(),
+                    custom_size: Some(Vec2::new(12.0, 16.0)),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, -16.0, Z_FLAME),
+                Visibility::Hidden,
+            ));
+        });
 }
 
-fn spawn_player(mut commands: Commands) {
-    spawn_player_entity(&mut commands);
+fn spawn_player(mut commands: Commands, assets: Res<SpriteAssets>) {
+    spawn_player_entity(&mut commands, &assets);
 }
 
 fn player_input(
@@ -160,34 +174,23 @@ fn apply_ship_damping(mut query: Query<&mut Velocity, With<Player>>) {
     }
 }
 
-fn draw_player(
-    mut gizmos: Gizmos,
-    time: Res<Time>,
-    query: Query<(&Transform, &EngineState), With<Player>>,
+/// 추진/브레이크 상태에 따라 화염 자식 스프라이트의 가시성과 위치(후미/전방)를 갱신한다.
+fn update_flame(
+    engine_q: Query<&EngineState, With<Player>>,
+    mut flame_q: Query<(&mut Visibility, &mut Transform), With<Flame>>,
 ) {
-    for (transform, engine) in &query {
-        let points = SHIP_POINTS.map(|p| transform.transform_point(p.extend(0.0)).truncate());
-        gizmos.linestrip_2d(points, SHIP_COLOR);
-
-        // 깜빡임 계수(0.6~1.0)
-        let flicker = 0.6 + 0.4 * (time.elapsed_secs() * 30.0).sin().abs();
+    let Ok(engine) = engine_q.single() else { return };
+    for (mut vis, mut tf) in &mut flame_q {
         if engine.thrusting {
-            let flame = [
-                Vec2::new(-6.0, -12.0),
-                Vec2::new(0.0, -12.0 - 10.0 * flicker),
-                Vec2::new(6.0, -12.0),
-            ]
-            .map(|p| transform.transform_point(p.extend(0.0)).truncate());
-            gizmos.linestrip_2d(flame, FLAME_COLOR);
-        }
-        if engine.braking {
-            let flame = [
-                Vec2::new(-4.0, 14.0),
-                Vec2::new(0.0, 14.0 + 7.0 * flicker),
-                Vec2::new(4.0, 14.0),
-            ]
-            .map(|p| transform.transform_point(p.extend(0.0)).truncate());
-            gizmos.linestrip_2d(flame, FLAME_COLOR);
+            *vis = Visibility::Visible;
+            tf.translation.y = -16.0; // 후미
+            tf.rotation = Quat::IDENTITY;
+        } else if engine.braking {
+            *vis = Visibility::Visible;
+            tf.translation.y = 16.0; // 전방
+            tf.rotation = Quat::from_rotation_z(std::f32::consts::PI);
+        } else {
+            *vis = Visibility::Hidden;
         }
     }
 }
@@ -311,12 +314,15 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn player_starts_with_special_charge() {
+    fn player_spawns_with_special_charge() {
         let mut app = App::new();
-        app.world_mut().run_system_once(spawn_player).unwrap();
-        let mut q = app
-            .world_mut()
-            .query_filtered::<&SpecialWeapon, With<Player>>();
+        let assets = crate::fx::sprites::dummy_sprite_assets();
+        app.world_mut()
+            .run_system_once(move |mut commands: Commands| {
+                spawn_player_entity(&mut commands, &assets);
+            })
+            .unwrap();
+        let mut q = app.world_mut().query_filtered::<&SpecialWeapon, With<Player>>();
         let weapon = q.single(app.world()).unwrap();
         assert_eq!(weapon.charges, STARTING_SPECIAL_CHARGES);
         assert!(weapon.charges > 0, "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
