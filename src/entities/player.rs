@@ -1,12 +1,16 @@
 use bevy::prelude::*;
 
-use crate::components::{Collider, Velocity, Wrapping};
-use crate::config::{
-    FLAME_COLOR, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
-    SHIP_ROTATION_SPEED, SHIP_THRUST,
+use crate::core::components::{Collider, Velocity, Wrapping};
+use crate::core::config::{
+    BEAM_LENGTH, BEAM_LIFETIME_SECS, FLAME_COLOR, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
+    SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
+    SHIP_ROTATION_SPEED, SHIP_THRUST, STARTING_SPECIAL_CHARGES,
 };
-use crate::logic::apply_brake;
-use crate::state::{GameState, GameplayEntity};
+use crate::core::logic::apply_brake;
+use crate::core::state::{GameState, GameplayEntity};
+use crate::entities::powerup::SpecialWeaponKind;
+use crate::fx::audio::{Sfx, SfxEvent};
+use crate::fx::shake::ShakeEvent;
 
 #[derive(Component)]
 pub struct Player;
@@ -15,6 +19,34 @@ pub struct Player;
 pub struct EngineState {
     pub thrusting: bool,
     pub braking: bool,
+}
+
+#[derive(Component)]
+pub struct FireCooldown(pub Timer);
+
+#[derive(Component)]
+pub struct Shield(pub Timer);
+
+#[derive(Component)]
+pub struct RapidFire(pub Timer);
+
+#[derive(Component)]
+pub struct Spread(pub Timer);
+
+#[derive(Component)]
+pub struct HyperspaceCooldown(pub Timer);
+
+#[derive(Component)]
+pub struct SpecialWeapon {
+    pub kind: SpecialWeaponKind,
+    pub charges: u32,
+}
+
+#[derive(Component)]
+pub struct SpecialBeam {
+    pub life: Timer,
+    pub origin: Vec2,
+    pub dir: Vec2,
 }
 
 /// 우주선 로컬 좌표(정면 = +Y). 마지막 점은 첫 점과 같아 닫힌 외곽선을 만든다.
@@ -33,13 +65,33 @@ impl Plugin for PlayerPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(
                 Update,
-                (player_input, draw_player).run_if(in_state(GameState::Playing)),
+                (
+                    player_input,
+                    draw_player,
+                    shield_tick,
+                    draw_shield,
+                    tick_fire_mods,
+                    activate_special,
+                    tick_and_draw_beam,
+                    hyperspace,
+                )
+                    .run_if(in_state(GameState::Playing)),
             )
             .add_systems(
                 FixedUpdate,
                 apply_ship_damping.run_if(in_state(GameState::Playing)),
             );
     }
+}
+
+/// 화면 경계 내(90% 범위) 임의 좌표를 반환한다. 하이퍼스페이스 순간이동 목적지 계산에 쓰인다.
+pub fn random_hyperspace_position(half: Vec2) -> Vec2 {
+    use rand::RngExt;
+    let mut rng = rand::rng();
+    Vec2::new(
+        rng.random_range(-half.x * 0.9..half.x * 0.9),
+        rng.random_range(-half.y * 0.9..half.y * 0.9),
+    )
 }
 
 pub fn spawn_player_entity(commands: &mut Commands) {
@@ -51,6 +103,17 @@ pub fn spawn_player_entity(commands: &mut Commands) {
         Wrapping,
         GameplayEntity,
         EngineState::default(),
+        FireCooldown({
+            let mut t = Timer::from_seconds(crate::core::config::FIRE_INTERVAL, TimerMode::Once);
+            t.tick(t.duration()); // 시작 시 준비완료
+            t
+        }),
+        SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: STARTING_SPECIAL_CHARGES },
+        HyperspaceCooldown({
+            let mut t = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
+            t.tick(t.duration()); // 시작 시 준비완료
+            t
+        }),
     ));
 }
 
@@ -129,12 +192,135 @@ fn draw_player(
     }
 }
 
+fn shield_tick(mut commands: Commands, time: Res<Time>, mut q: Query<(Entity, &mut Shield)>) {
+    for (entity, mut shield) in &mut q {
+        shield.0.tick(time.delta());
+        if shield.0.is_finished() {
+            commands.entity(entity).remove::<Shield>();
+        }
+    }
+}
+
+fn tick_fire_mods(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut rapid: Query<(Entity, &mut RapidFire)>,
+    mut spread: Query<(Entity, &mut Spread)>,
+) {
+    for (e, mut t) in &mut rapid {
+        t.0.tick(time.delta());
+        if t.0.is_finished() {
+            commands.entity(e).remove::<RapidFire>();
+        }
+    }
+    for (e, mut t) in &mut spread {
+        t.0.tick(time.delta());
+        if t.0.is_finished() {
+            commands.entity(e).remove::<Spread>();
+        }
+    }
+}
+
+fn draw_shield(mut gizmos: Gizmos, q: Query<&Transform, (With<Player>, With<Shield>)>) {
+    for transform in &q {
+        gizmos.circle_2d(
+            Isometry2d::from_translation(transform.translation.truncate()),
+            18.0,
+            Color::srgb(0.3, 0.7, 1.0),
+        );
+    }
+}
+
+fn activate_special(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut sfx: MessageWriter<SfxEvent>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut query: Query<(&Transform, &mut SpecialWeapon), With<Player>>,
+) {
+    if !keys.just_pressed(KeyCode::KeyX) {
+        return;
+    }
+    let Ok((transform, mut weapon)) = query.single_mut() else { return };
+    if weapon.charges == 0 {
+        return;
+    }
+    weapon.charges -= 1;
+    let origin = transform.translation.truncate();
+    let dir = (transform.rotation * Vec3::Y).truncate();
+    match weapon.kind {
+        SpecialWeaponKind::LaserBeam => {
+            commands.spawn((
+                SpecialBeam { life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once), origin, dir },
+                GameplayEntity,
+            ));
+        }
+    }
+    sfx.write(SfxEvent(Sfx::Special));
+    shake.write(ShakeEvent(SHAKE_SPECIAL));
+}
+
+fn tick_and_draw_beam(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut gizmos: Gizmos,
+    mut query: Query<(Entity, &mut SpecialBeam)>,
+) {
+    for (entity, mut beam) in &mut query {
+        beam.life.tick(time.delta());
+        if beam.life.is_finished() {
+            commands.entity(entity).despawn();
+            continue;
+        }
+        let end = beam.origin + beam.dir.normalize_or_zero() * BEAM_LENGTH;
+        // 굵게 보이도록 평행선 여러 개
+        for off in [-8.0, -4.0, 0.0, 4.0, 8.0] {
+            let perp = Vec2::new(-beam.dir.y, beam.dir.x).normalize_or_zero() * off;
+            gizmos.line_2d(beam.origin + perp, end + perp, Color::srgb(1.0, 0.3, 1.0));
+        }
+    }
+}
+
+fn hyperspace(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut sfx: MessageWriter<SfxEvent>,
+    mut query: Query<(&mut Transform, &mut Velocity, &mut HyperspaceCooldown), With<Player>>,
+) {
+    let Ok((mut transform, mut velocity, mut cooldown)) = query.single_mut() else { return };
+    cooldown.0.tick(time.delta());
+    if !keys.just_pressed(KeyCode::KeyH) || !cooldown.0.is_finished() {
+        return;
+    }
+    let pos = random_hyperspace_position(Vec2::new(
+        crate::core::config::HALF_WIDTH,
+        crate::core::config::HALF_HEIGHT,
+    ));
+    transform.translation.x = pos.x;
+    transform.translation.y = pos.y;
+    velocity.0 = Vec2::ZERO;
+    cooldown.0 = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
+    sfx.write(SfxEvent(Sfx::Hyperspace));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::components::Velocity;
+    use crate::core::components::Velocity;
     use bevy::ecs::system::RunSystemOnce;
     use std::time::Duration;
+
+    #[test]
+    fn player_starts_with_special_charge() {
+        let mut app = App::new();
+        app.world_mut().run_system_once(spawn_player).unwrap();
+        let mut q = app
+            .world_mut()
+            .query_filtered::<&SpecialWeapon, With<Player>>();
+        let weapon = q.single(app.world()).unwrap();
+        assert_eq!(weapon.charges, STARTING_SPECIAL_CHARGES);
+        assert!(weapon.charges > 0, "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
+    }
 
     #[test]
     fn thrust_accelerates_forward() {
@@ -210,6 +396,15 @@ mod tests {
         app.world_mut().run_system_once(apply_ship_damping).unwrap();
         let v = app.world().entity(e).get::<Velocity>().unwrap();
         assert!(v.0.length() <= SHIP_MAX_SPEED + 1e-3);
+    }
+
+    #[test]
+    fn hyperspace_position_within_bounds() {
+        let half = Vec2::new(640.0, 360.0);
+        for _ in 0..20 {
+            let p = random_hyperspace_position(half);
+            assert!(p.x.abs() <= half.x && p.y.abs() <= half.y);
+        }
     }
 
     #[test]

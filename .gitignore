@@ -2,6 +2,9 @@
 /target
 **/*.rs.bk
 
+# 빌드 시 생성되는 합성 WAV
+/assets/sounds/*.wav
+
 # macOS
 .DS_Store
 

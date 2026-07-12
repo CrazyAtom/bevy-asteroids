@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use crate::components::{AngularVelocity, Velocity, Wrapping};
-use crate::config::{HALF_HEIGHT, HALF_WIDTH};
-use crate::logic::wrap_position;
+use crate::core::components::{AngularVelocity, Velocity, Wrapping};
+use crate::core::config::{HALF_HEIGHT, HALF_WIDTH};
+use crate::core::logic::wrap_position;
 
 pub struct MovementPlugin;
 

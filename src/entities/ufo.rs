@@ -1,15 +1,16 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::bullet::spawn_enemy_bullet;
-use crate::components::{Collider, Velocity};
-use crate::config::{
+use crate::entities::bullet::spawn_enemy_bullet;
+use crate::core::components::{Collider, Velocity};
+use crate::core::config::{
     HALF_HEIGHT, HALF_WIDTH, UFO_BULLET_SPEED, UFO_FIRE_INTERVAL_SECS, UFO_LARGE_RADIUS,
     UFO_SMALL_RADIUS, UFO_SPEED,
 };
-use crate::logic::aim_direction;
-use crate::player::Player;
-use crate::state::{GameState, GameplayEntity};
+use crate::core::logic::aim_direction;
+use crate::entities::player::Player;
+use crate::core::state::{GameState, GameplayEntity};
+use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UfoSize {
@@ -46,7 +47,7 @@ pub struct UfoPlugin;
 impl Plugin for UfoPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(UfoSpawnTimer(Timer::from_seconds(
-            crate::config::UFO_SPAWN_INTERVAL_BASE,
+            crate::core::config::UFO_SPAWN_INTERVAL_BASE,
             TimerMode::Once,
         )))
         .add_systems(
@@ -60,15 +61,20 @@ impl Plugin for UfoPlugin {
 fn ufo_spawn_system(
     mut commands: Commands,
     time: Res<Time>,
-    wave: Res<crate::state::Wave>,
+    wave: Res<crate::core::state::Wave>,
     mut timer: ResMut<UfoSpawnTimer>,
 ) {
+    // 웨이브1은 UFO 없이 소행성만(초반 학습 구간). 틱 전에 반환해 타이머를
+    // 얼려두면, 웨이브2 진입 후 온전한 12초 뒤 첫 UFO가 등장한다.
+    if !crate::core::logic::ufo_active_for_wave(wave.0) {
+        return;
+    }
     timer.0.tick(time.delta());
     if !timer.0.is_finished() {
         return;
     }
     let mut rng = rand::rng();
-    let size = if rng.random_range(0.0..1.0) < crate::logic::small_ufo_probability_for_wave(wave.0)
+    let size = if rng.random_range(0.0..1.0) < crate::core::logic::small_ufo_probability_for_wave(wave.0)
     {
         UfoSize::Small
     } else {
@@ -77,7 +83,7 @@ fn ufo_spawn_system(
     let from_left = rng.random_range(0.0..1.0) < 0.5;
     spawn_ufo(&mut commands, size, from_left);
     // 다음 간격을 웨이브 기반으로 재설정
-    let interval = crate::logic::ufo_interval_for_wave(wave.0);
+    let interval = crate::core::logic::ufo_interval_for_wave(wave.0);
     timer.0 = Timer::from_seconds(interval, TimerMode::Once);
 }
 
@@ -111,6 +117,7 @@ fn ufo_fire(
     time: Res<Time>,
     mut ufos: Query<(&Transform, &mut Ufo)>,
     players: Query<&Transform, With<Player>>,
+    mut sfx: MessageWriter<SfxEvent>,
 ) {
     let player_pos = players.single().ok().map(|t| t.translation.truncate());
     for (ufo_tf, mut ufo) in &mut ufos {
@@ -127,6 +134,7 @@ fn ufo_fire(
             UfoSize::Large => random_unit_dir(),
         };
         spawn_enemy_bullet(&mut commands, origin, dir * UFO_BULLET_SPEED);
+        sfx.write(SfxEvent(Sfx::UfoFire));
     }
 }
 

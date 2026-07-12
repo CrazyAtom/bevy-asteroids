@@ -43,3 +43,37 @@ pub const UFO_SMALL_RADIUS: f32 = 12.0;
 pub const UFO_FIRE_INTERVAL_SECS: f32 = 1.4;
 pub const UFO_SPAWN_INTERVAL_BASE: f32 = 12.0;
 pub const UFO_SPAWN_INTERVAL_MIN: f32 = 5.0;
+
+// Phase 3 — 배경
+pub const STAR_COUNT: usize = 120;
+pub const TWINKLE_SPEED: f32 = 2.0;
+
+// Phase 3 — 화면 흔들림
+pub const MAX_SHAKE_OFFSET: f32 = 18.0;
+pub const SHAKE_DECAY: f32 = 1.5;
+pub const SHAKE_HIT: f32 = 0.6;
+pub const SHAKE_EXPLOSION: f32 = 0.25;
+pub const SHAKE_SPECIAL: f32 = 0.5;
+
+// Phase 3 — 발사 쿨다운
+pub const FIRE_INTERVAL: f32 = 0.25;
+pub const RAPID_FIRE_INTERVAL: f32 = 0.10;
+pub const SPREAD_ANGLE: f32 = 0.26; // rad
+pub const RAPID_FIRE_SECS: f32 = 6.0;
+pub const SPREAD_SECS: f32 = 6.0;
+
+// Phase 3 — 파워업
+pub const POWERUP_DROP_CHANCE: f32 = 0.18;
+pub const POWERUP_LIFETIME_SECS: f32 = 8.0;
+pub const POWERUP_DRIFT_SPEED: f32 = 30.0;
+pub const POWERUP_RADIUS: f32 = 12.0;
+pub const SHIELD_SECS: f32 = 5.0;
+
+// Phase 3 — 특수무기
+pub const STARTING_SPECIAL_CHARGES: u32 = 1; // 게임 시작 시 보유한 특수무기 충전 수
+pub const BEAM_LIFETIME_SECS: f32 = 0.4;
+pub const BEAM_WIDTH: f32 = 22.0;
+pub const BEAM_LENGTH: f32 = 2000.0;
+
+// Phase 3 — 하이퍼스페이스
+pub const HYPERSPACE_COOLDOWN_SECS: f32 = 2.0;

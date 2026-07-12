@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::components::{AngularVelocity, Collider, Velocity, Wrapping};
-use crate::config::{ASTEROID_MAX_SPEED, ASTEROID_MIN_SPEED, ASTEROID_SPIN_MAX, HALF_HEIGHT, HALF_WIDTH};
-use crate::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
-use crate::state::{GameState, GameplayEntity, Wave};
+use crate::core::components::{AngularVelocity, Collider, Velocity, Wrapping};
+use crate::core::config::{ASTEROID_MAX_SPEED, ASTEROID_MIN_SPEED, ASTEROID_SPIN_MAX, HALF_HEIGHT, HALF_WIDTH};
+use crate::core::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
+use crate::core::state::{GameState, GameplayEntity, Wave};
 
 #[derive(Component)]
 pub struct Asteroid {

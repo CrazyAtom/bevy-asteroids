@@ -75,25 +75,50 @@ pub fn aim_direction(from: Vec2, to: Vec2) -> Vec2 {
     (to - from).try_normalize().unwrap_or(Vec2::Y)
 }
 
+/// 난이도 계산용 0-기반 지수. 게임은 웨이브1부터 시작하므로 웨이브1이
+/// 기준선(지수 0)이 되도록 1을 뺀다. → 첫 웨이브 = 클래식 기본 난이도(소행성 4개).
+fn difficulty_index(wave: u32) -> u32 {
+    wave.saturating_sub(1)
+}
+
 pub fn asteroid_count_for_wave(wave: u32) -> usize {
-    (crate::config::BASE_ASTEROIDS + wave as usize).min(crate::config::MAX_ASTEROIDS)
+    (crate::core::config::BASE_ASTEROIDS + difficulty_index(wave) as usize)
+        .min(crate::core::config::MAX_ASTEROIDS)
 }
 
 pub fn asteroid_speed_scale_for_wave(wave: u32) -> f32 {
-    (1.0 + wave as f32 * 0.08).min(2.0)
+    (1.0 + difficulty_index(wave) as f32 * 0.08).min(2.0)
 }
 
 pub fn ufo_interval_for_wave(wave: u32) -> f32 {
-    (crate::config::UFO_SPAWN_INTERVAL_BASE - wave as f32 * 0.8)
-        .max(crate::config::UFO_SPAWN_INTERVAL_MIN)
+    (crate::core::config::UFO_SPAWN_INTERVAL_BASE - difficulty_index(wave) as f32 * 0.8)
+        .max(crate::core::config::UFO_SPAWN_INTERVAL_MIN)
 }
 
 pub fn small_ufo_probability_for_wave(wave: u32) -> f32 {
-    (0.2 + wave as f32 * 0.05).min(0.9)
+    (0.2 + difficulty_index(wave) as f32 * 0.05).min(0.9)
+}
+
+/// 웨이브1은 UFO 없이 소행성만 등장(초반 학습 구간). 웨이브2부터 UFO 활성화.
+pub fn ufo_active_for_wave(wave: u32) -> bool {
+    wave >= 2
 }
 
 pub fn update_high_score(current: u32, new: u32) -> u32 {
     current.max(new)
+}
+
+/// trauma를 dt만큼 감쇠(0 미만으로 내려가지 않음).
+pub fn decay_trauma(trauma: f32, dt: f32) -> f32 {
+    (trauma - crate::core::config::SHAKE_DECAY * dt).max(0.0)
+}
+
+/// origin에서 dir 방향으로 length만큼 뻗는 반폭 half_width 빔이 중심 center·반지름 radius 원과 겹치는지.
+pub fn segment_circle_hit(origin: Vec2, dir: Vec2, length: f32, half_width: f32, center: Vec2, radius: f32) -> bool {
+    let d = dir.normalize_or_zero();
+    let t = (center - origin).dot(d).clamp(0.0, length);
+    let closest = origin + d * t;
+    closest.distance(center) <= half_width + radius
 }
 
 #[cfg(test)]
@@ -182,19 +207,26 @@ mod tests {
     }
 
     #[test]
+    fn trauma_decays_to_zero_not_below() {
+        let t = decay_trauma(0.5, 0.1);
+        assert!((0.0..0.5).contains(&t));
+        assert_eq!(decay_trauma(0.05, 100.0), 0.0); // 큰 dt여도 음수 아님
+    }
+
+    #[test]
     fn wave_scaling_formulas() {
-        // 개수: 기본4 + wave, 상한10
-        assert_eq!(asteroid_count_for_wave(0), 4);
-        assert_eq!(asteroid_count_for_wave(3), 7);
+        // 웨이브1 = 기준선(지수 0): 기본4개, 상한10
+        assert_eq!(asteroid_count_for_wave(1), 4);
+        assert_eq!(asteroid_count_for_wave(4), 7); // 웨이브4 → 지수3 → 4+3
         assert_eq!(asteroid_count_for_wave(50), 10); // 상한
-        // 속도 배수: 웨이브↑ → 증가
-        assert!(asteroid_speed_scale_for_wave(5) > asteroid_speed_scale_for_wave(0));
-        assert_eq!(asteroid_speed_scale_for_wave(0), 1.0);
+        // 속도 배수: 웨이브↑ → 증가, 웨이브1은 정확히 1.0
+        assert!(asteroid_speed_scale_for_wave(6) > asteroid_speed_scale_for_wave(1));
+        assert_eq!(asteroid_speed_scale_for_wave(1), 1.0);
         // UFO 간격: 웨이브↑ → 감소, 하한 존재
-        assert!(ufo_interval_for_wave(5) < ufo_interval_for_wave(0));
+        assert!(ufo_interval_for_wave(6) < ufo_interval_for_wave(1));
         assert!(ufo_interval_for_wave(100) >= 5.0);
         // 소형 확률: 웨이브↑ → 증가, [0,1]
-        assert!(small_ufo_probability_for_wave(10) > small_ufo_probability_for_wave(0));
+        assert!(small_ufo_probability_for_wave(11) > small_ufo_probability_for_wave(1));
         assert!(small_ufo_probability_for_wave(100) <= 1.0);
 
         // 캡 경계값 고정: 큰 웨이브에서 상한/하한이 정확히 걸리는지
@@ -202,5 +234,21 @@ mod tests {
         assert_eq!(asteroid_speed_scale_for_wave(1000), 2.0);     // 속도 배수 상한
         assert_eq!(ufo_interval_for_wave(1000), 5.0);             // UFO 간격 하한
         assert_eq!(small_ufo_probability_for_wave(1000), 0.9);    // 소형 확률 상한
+
+        // 웨이브1은 UFO 미등장, 웨이브2부터 활성화
+        assert!(!ufo_active_for_wave(1));
+        assert!(ufo_active_for_wave(2));
+    }
+
+    #[test]
+    fn beam_hits_target_on_path_not_off() {
+        let o = Vec2::ZERO;
+        let dir = Vec2::Y;
+        // 경로 위(위쪽 100)의 원
+        assert!(segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(0.0, 100.0), 20.0));
+        // 경로에서 멀리 옆
+        assert!(!segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(200.0, 100.0), 20.0));
+        // 뒤쪽(반대 방향)은 안 맞음
+        assert!(!segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(0.0, -100.0), 20.0));
     }
 }
