@@ -54,6 +54,10 @@ pub struct SpecialBeam {
 #[derive(Component)]
 pub struct Flame;
 
+/// 우주선 실드 버블 스프라이트(자식 엔티티) 마커. Shield 컴포넌트 유무로 가시성 토글.
+#[derive(Component)]
+pub struct ShieldSprite;
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -65,7 +69,7 @@ impl Plugin for PlayerPlugin {
                     player_input,
                     update_flame,
                     shield_tick,
-                    draw_shield,
+                    update_shield_sprite,
                     tick_fire_mods,
                     activate_special,
                     tick_and_draw_beam,
@@ -126,6 +130,16 @@ pub fn spawn_player_entity(commands: &mut Commands, assets: &SpriteAssets) {
                     ..default()
                 },
                 Transform::from_xyz(0.0, -16.0, Z_FLAME),
+                Visibility::Hidden,
+            ));
+            parent.spawn((
+                ShieldSprite,
+                Sprite {
+                    image: assets.shield.clone(),
+                    custom_size: Some(Vec2::splat(48.0)),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, 0.0, crate::core::config::Z_SHIELD),
                 Visibility::Hidden,
             ));
         });
@@ -224,13 +238,18 @@ fn tick_fire_mods(
     }
 }
 
-fn draw_shield(mut gizmos: Gizmos, q: Query<&Transform, (With<Player>, With<Shield>)>) {
-    for transform in &q {
-        gizmos.circle_2d(
-            Isometry2d::from_translation(transform.translation.truncate()),
-            18.0,
-            Color::srgb(0.3, 0.7, 1.0),
-        );
+/// Shield 컴포넌트 유무에 따라 실드 버블 스프라이트의 가시성을 토글한다.
+fn update_shield_sprite(
+    player_q: Query<Has<Shield>, With<Player>>,
+    mut shield_q: Query<&mut Visibility, With<ShieldSprite>>,
+) {
+    let Ok(has_shield) = player_q.single() else { return };
+    for mut vis in &mut shield_q {
+        *vis = if has_shield {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
     }
 }
 
