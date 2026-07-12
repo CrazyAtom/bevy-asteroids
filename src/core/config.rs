@@ -77,3 +77,15 @@ pub const BEAM_LENGTH: f32 = 2000.0;
 
 // Phase 3 — 하이퍼스페이스
 pub const HYPERSPACE_COOLDOWN_SECS: f32 = 2.0;
+
+// Phase 4 — 스프라이트 렌더링
+pub const VISUAL_FIT: f32 = 1.2; // 콜라이더 반경 대비 스프라이트 표시 배율
+pub const Z_BACKGROUND: f32 = -100.0;
+pub const Z_FLAME: f32 = -1.0;
+pub const Z_ENTITY: f32 = 0.0;
+pub const Z_SHIELD: f32 = 5.0;
+pub const Z_BEAM: f32 = 10.0;
+pub const Z_PARTICLE: f32 = 12.0;
+pub const Z_EXPLOSION: f32 = 15.0;
+pub const EXPLOSION_FRAME_COUNT: usize = 6;
+pub const EXPLOSION_FRAME_SECS: f32 = 0.06;
