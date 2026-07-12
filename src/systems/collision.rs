@@ -4,8 +4,10 @@ use bevy::prelude::*;
 
 use crate::entities::asteroid::{random_velocity, spawn_asteroid, Asteroid};
 use crate::entities::bullet::{Bullet, EnemyBullet};
+use crate::entities::powerup::{pick_powerup_kind, spawn_powerup};
 use crate::core::components::Collider;
 use crate::core::config::EXPLOSION_PARTICLES;
+use crate::core::config::POWERUP_DROP_CHANCE;
 use crate::core::config::{SHAKE_EXPLOSION, SHAKE_HIT};
 use crate::fx::effects::spawn_explosion;
 use crate::fx::shake::ShakeEvent;
@@ -14,6 +16,7 @@ use crate::core::logic::{circles_overlap, next_asteroid_size};
 use crate::entities::player::{spawn_player_entity, Player};
 use crate::core::state::{GameState, Lives, Score};
 use crate::entities::ufo::Ufo;
+use rand::RngExt;
 
 pub struct CollisionPlugin;
 
@@ -61,6 +64,12 @@ fn bullet_vs_asteroid(
                         spawn_asteroid(&mut commands, next, base, random_velocity(next));
                     }
                 }
+                {
+                    let mut rng = rand::rng();
+                    if rng.random_range(0.0..1.0) < POWERUP_DROP_CHANCE {
+                        spawn_powerup(&mut commands, pick_powerup_kind(rng.random_range(0.0..1.0)), asteroid_tf.translation.truncate());
+                    }
+                }
                 break; // 이 총알은 소진됨
             }
         }
@@ -94,6 +103,12 @@ fn bullet_vs_ufo(
                 spawn_explosion(&mut commands, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
                 sfx.write(SfxEvent(Sfx::Explosion));
+                {
+                    let mut rng = rand::rng();
+                    if rng.random_range(0.0..1.0) < POWERUP_DROP_CHANCE {
+                        spawn_powerup(&mut commands, pick_powerup_kind(rng.random_range(0.0..1.0)), ufo_tf.translation.truncate());
+                    }
+                }
                 break;
             }
         }

@@ -30,6 +30,7 @@ fn main() {
         .add_plugins(fx::shake::ShakePlugin)
         .add_plugins(fx::audio::AudioPlugin)
         .add_plugins(entities::ufo::UfoPlugin)
+        .add_plugins(entities::powerup::PowerupPlugin)
         .add_plugins(ui::UiPlugin)
         .add_systems(Startup, (setup_camera, setup_high_score))
         .run();
