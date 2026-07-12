@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use rand::RngExt;
 
 use crate::core::components::{Collider, Velocity};
-use crate::core::config::{POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_RADIUS};
+use crate::core::config::{POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_RADIUS, SHIELD_SECS};
 use crate::core::state::{GameState, GameplayEntity, Lives};
-use crate::entities::player::Player;
+use crate::entities::player::{Player, Shield};
 use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -111,10 +111,14 @@ fn collect_powerup(
         ) {
             match powerup.kind {
                 PowerupKind::ExtraLife => lives.0 += 1,
-                // 나머지 종류는 Task 7·8·9에서 이 match에 팔을 추가해 컴포넌트 부여
+                PowerupKind::Shield => {
+                    commands
+                        .entity(player_entity)
+                        .insert(Shield(Timer::from_seconds(SHIELD_SECS, TimerMode::Once)));
+                }
+                // 나머지 종류는 Task 8·9에서 이 match에 팔을 추가해 컴포넌트 부여
                 _ => {}
             }
-            let _ = player_entity;
             commands.entity(powerup_entity).despawn();
             sfx.write(SfxEvent(Sfx::Pickup));
         }

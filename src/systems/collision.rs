@@ -13,7 +13,7 @@ use crate::fx::effects::spawn_explosion;
 use crate::fx::shake::ShakeEvent;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::core::logic::{circles_overlap, next_asteroid_size};
-use crate::entities::player::{spawn_player_entity, Player};
+use crate::entities::player::{spawn_player_entity, Player, Shield};
 use crate::core::state::{GameState, Lives, Score};
 use crate::entities::ufo::Ufo;
 use rand::RngExt;
@@ -121,14 +121,17 @@ fn player_damage(
     mut lives: ResMut<Lives>,
     mut next_state: ResMut<NextState<GameState>>,
     mut shake: MessageWriter<ShakeEvent>,
-    players: Query<(Entity, &Transform, &Collider), With<Player>>,
+    players: Query<(Entity, &Transform, &Collider, Option<&Shield>), With<Player>>,
     asteroids: Query<(&Transform, &Collider), With<Asteroid>>,
     ufos: Query<(&Transform, &Collider), With<Ufo>>,
     enemy_bullets: Query<(Entity, &Transform, &Collider), With<EnemyBullet>>,
 ) {
-    let Ok((player_entity, player_tf, player_col)) = players.single() else {
+    let Ok((player_entity, player_tf, player_col, shield)) = players.single() else {
         return;
     };
+    if shield.is_some() {
+        return; // 실드 중 무피해
+    }
     let ppos = player_tf.translation.truncate();
     let pr = player_col.radius;
 
@@ -349,6 +352,27 @@ mod tests {
         ));
         app.world_mut().run_system_once(player_damage).unwrap();
         assert_eq!(app.world().resource::<Lives>().0, 2);
+    }
+
+    #[test]
+    fn shielded_player_takes_no_damage() {
+        use crate::entities::player::{Player, Shield};
+        let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
+        app.add_message::<SfxEvent>();
+        app.add_plugins(bevy::state::app::StatesPlugin);
+        app.init_state::<GameState>();
+        app.insert_resource(Lives(3));
+        app.world_mut().spawn((
+            Player, Transform::from_xyz(0.0, 0.0, 0.0), Collider { radius: 12.0 },
+            Shield(Timer::from_seconds(5.0, TimerMode::Once)),
+        ));
+        app.world_mut().spawn((
+            Asteroid { size: AsteroidSize::Large }, Transform::from_xyz(0.0, 0.0, 0.0),
+            Collider { radius: AsteroidSize::Large.radius() },
+        ));
+        app.world_mut().run_system_once(player_damage).unwrap();
+        assert_eq!(app.world().resource::<Lives>().0, 3); // 무피해
     }
 
     #[test]

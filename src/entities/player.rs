@@ -20,6 +20,9 @@ pub struct EngineState {
 #[derive(Component)]
 pub struct FireCooldown(pub Timer);
 
+#[derive(Component)]
+pub struct Shield(pub Timer);
+
 /// 우주선 로컬 좌표(정면 = +Y). 마지막 점은 첫 점과 같아 닫힌 외곽선을 만든다.
 const SHIP_POINTS: [Vec2; 5] = [
     Vec2::new(0.0, 16.0),
@@ -36,7 +39,8 @@ impl Plugin for PlayerPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(
                 Update,
-                (player_input, draw_player).run_if(in_state(GameState::Playing)),
+                (player_input, draw_player, shield_tick, draw_shield)
+                    .run_if(in_state(GameState::Playing)),
             )
             .add_systems(
                 FixedUpdate,
@@ -134,6 +138,25 @@ fn draw_player(
             .map(|p| transform.transform_point(p.extend(0.0)).truncate());
             gizmos.linestrip_2d(flame, FLAME_COLOR);
         }
+    }
+}
+
+fn shield_tick(mut commands: Commands, time: Res<Time>, mut q: Query<(Entity, &mut Shield)>) {
+    for (entity, mut shield) in &mut q {
+        shield.0.tick(time.delta());
+        if shield.0.is_finished() {
+            commands.entity(entity).remove::<Shield>();
+        }
+    }
+}
+
+fn draw_shield(mut gizmos: Gizmos, q: Query<&Transform, (With<Player>, With<Shield>)>) {
+    for transform in &q {
+        gizmos.circle_2d(
+            Isometry2d::from_translation(transform.translation.truncate()),
+            18.0,
+            Color::srgb(0.3, 0.7, 1.0),
+        );
     }
 }
 
