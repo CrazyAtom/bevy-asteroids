@@ -66,6 +66,7 @@ fn draw_enemy_bullets(mut gizmos: Gizmos, query: Query<&Transform, With<EnemyBul
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn fire_bullet(
     mut commands: Commands,
     time: Res<Time>,

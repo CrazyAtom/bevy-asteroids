@@ -49,6 +49,7 @@ fn spawn_hud(mut commands: Commands) {
     ));
 }
 
+#[allow(clippy::type_complexity)]
 fn update_hud(
     score: Res<Score>,
     lives: Res<Lives>,

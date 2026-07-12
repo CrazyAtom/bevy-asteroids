@@ -9,7 +9,7 @@ fn main() {
     let dir = Path::new("assets/sounds");
     fs::create_dir_all(dir).unwrap();
     // (이름, 지속시간초, 생성기)
-    write_wav(dir, "fire.wav", synth(0.15, |t| (600.0 - 400.0 * t / 0.15) , 0.4, false));
+    write_wav(dir, "fire.wav", synth(0.15, |t| 600.0 - 400.0 * t / 0.15, 0.4, false));
     write_wav(dir, "explosion.wav", synth(0.4, |_| 0.0, 0.6, true));
     write_wav(dir, "ufo_fire.wav", synth(0.2, |t| 300.0 + 200.0 * (t * 30.0).sin(), 0.3, false));
     write_wav(dir, "pickup.wav", synth(0.2, |t| 500.0 + 600.0 * t / 0.2, 0.3, false));
