@@ -5,8 +5,9 @@ use crate::entities::bullet::spawn_enemy_bullet;
 use crate::core::components::{Collider, Velocity};
 use crate::core::config::{
     HALF_HEIGHT, HALF_WIDTH, UFO_BULLET_SPEED, UFO_FIRE_INTERVAL_SECS, UFO_LARGE_RADIUS,
-    UFO_SMALL_RADIUS, UFO_SPEED,
+    UFO_SMALL_RADIUS, UFO_SPEED, Z_ENTITY,
 };
+use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 use crate::core::logic::aim_direction;
 use crate::entities::player::Player;
 use crate::core::state::{GameState, GameplayEntity};
@@ -52,7 +53,7 @@ impl Plugin for UfoPlugin {
         )))
         .add_systems(
             Update,
-            (ufo_spawn_system, ufo_wobble, ufo_fire, despawn_offscreen_ufo, draw_ufos)
+            (ufo_spawn_system, ufo_wobble, ufo_fire, despawn_offscreen_ufo)
                 .run_if(in_state(GameState::Playing)),
         );
     }
@@ -60,6 +61,7 @@ impl Plugin for UfoPlugin {
 
 fn ufo_spawn_system(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     time: Res<Time>,
     wave: Res<crate::core::state::Wave>,
     mut timer: ResMut<UfoSpawnTimer>,
@@ -81,14 +83,21 @@ fn ufo_spawn_system(
         UfoSize::Large
     };
     let from_left = rng.random_range(0.0..1.0) < 0.5;
-    spawn_ufo(&mut commands, size, from_left);
+    spawn_ufo(&mut commands, &assets, size, from_left);
     // 다음 간격을 웨이브 기반으로 재설정
     let interval = crate::core::logic::ufo_interval_for_wave(wave.0);
     timer.0 = Timer::from_seconds(interval, TimerMode::Once);
 }
 
+fn ufo_image(size: UfoSize, assets: &SpriteAssets) -> Handle<Image> {
+    match size {
+        UfoSize::Large => assets.ufo_large.clone(),
+        UfoSize::Small => assets.ufo_small.clone(),
+    }
+}
+
 /// 화면 좌/우 가장자리에서 등장해 반대편으로 수평 이동하는 UFO 1기를 스폰.
-pub fn spawn_ufo(commands: &mut Commands, size: UfoSize, from_left: bool) {
+pub fn spawn_ufo(commands: &mut Commands, assets: &SpriteAssets, size: UfoSize, from_left: bool) {
     let mut rng = rand::rng();
     let dir = if from_left { 1.0 } else { -1.0 };
     let x = -dir * (HALF_WIDTH + size.radius());
@@ -98,7 +107,12 @@ pub fn spawn_ufo(commands: &mut Commands, size: UfoSize, from_left: bool) {
             size,
             fire_timer: Timer::from_seconds(UFO_FIRE_INTERVAL_SECS, TimerMode::Repeating),
         },
-        Transform::from_xyz(x, y, 0.0),
+        Sprite {
+            image: ufo_image(size, assets),
+            custom_size: Some(sprite_size_for(size.radius())),
+            ..default()
+        },
+        Transform::from_xyz(x, y, Z_ENTITY),
         Velocity(Vec2::new(dir * UFO_SPEED, 0.0)),
         Collider { radius: size.radius() },
         GameplayEntity,
@@ -114,6 +128,7 @@ fn random_unit_dir() -> Vec2 {
 
 fn ufo_fire(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     time: Res<Time>,
     mut ufos: Query<(&Transform, &mut Ufo)>,
     players: Query<&Transform, With<Player>>,
@@ -133,7 +148,7 @@ fn ufo_fire(
             },
             UfoSize::Large => random_unit_dir(),
         };
-        spawn_enemy_bullet(&mut commands, origin, dir * UFO_BULLET_SPEED);
+        spawn_enemy_bullet(&mut commands, &assets, origin, dir * UFO_BULLET_SPEED);
         sfx.write(SfxEvent(Sfx::UfoFire));
     }
 }
@@ -155,21 +170,6 @@ fn despawn_offscreen_ufo(mut commands: Commands, query: Query<(Entity, &Transfor
     }
 }
 
-fn draw_ufos(mut gizmos: Gizmos, query: Query<(&Transform, &Ufo)>) {
-    for (transform, ufo) in &query {
-        let r = ufo.size.radius();
-        let pos = transform.translation.truncate();
-        // 몸통(원)
-        gizmos.circle_2d(Isometry2d::from_translation(pos), r, Color::srgb(0.7, 1.0, 0.7));
-        // 상단 돔(작은 원)
-        gizmos.circle_2d(
-            Isometry2d::from_translation(pos + Vec2::new(0.0, r * 0.5)),
-            r * 0.5,
-            Color::srgb(0.7, 1.0, 0.7),
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -185,9 +185,10 @@ mod tests {
     #[test]
     fn spawn_ufo_creates_one_moving_ufo() {
         let mut app = App::new();
+        let assets = crate::fx::sprites::dummy_sprite_assets();
         app.world_mut()
-            .run_system_once(|mut commands: Commands| {
-                spawn_ufo(&mut commands, UfoSize::Large, true);
+            .run_system_once(move |mut commands: Commands| {
+                spawn_ufo(&mut commands, &assets, UfoSize::Large, true);
             })
             .unwrap();
         let mut q = app.world_mut().query::<(&Ufo, &Velocity)>();
