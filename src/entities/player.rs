@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
-    BEAM_LENGTH, BEAM_LIFETIME_SECS, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL, SHIP_BRAKE_RATE,
-    SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED, SHIP_THRUST,
-    STARTING_SPECIAL_CHARGES, Z_ENTITY, Z_FLAME,
+    BEAM_LENGTH, BEAM_LIFETIME_SECS, BEAM_WIDTH, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
+    SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
+    SHIP_THRUST, STARTING_SPECIAL_CHARGES, Z_BEAM, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
@@ -72,7 +72,7 @@ impl Plugin for PlayerPlugin {
                     update_shield_sprite,
                     tick_fire_mods,
                     activate_special,
-                    tick_and_draw_beam,
+                    tick_beam,
                     hyperspace,
                 )
                     .run_if(in_state(GameState::Playing)),
@@ -255,6 +255,7 @@ fn update_shield_sprite(
 
 fn activate_special(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     keys: Res<ButtonInput<KeyCode>>,
     mut sfx: MessageWriter<SfxEvent>,
     mut shake: MessageWriter<ShakeEvent>,
@@ -272,8 +273,21 @@ fn activate_special(
     let dir = (transform.rotation * Vec3::Y).truncate();
     match weapon.kind {
         SpecialWeaponKind::LaserBeam => {
+            // 빔 스프라이트는 세로(+Y)로 그려짐 → dir 방향으로 회전, 원점~사거리 중앙에 배치.
+            let angle = dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2;
+            let center = origin + dir.normalize_or_zero() * (BEAM_LENGTH * 0.5);
             commands.spawn((
                 SpecialBeam { life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once), origin, dir },
+                Sprite {
+                    image: assets.beam.clone(),
+                    custom_size: Some(Vec2::new(BEAM_WIDTH, BEAM_LENGTH)),
+                    ..default()
+                },
+                Transform {
+                    translation: center.extend(Z_BEAM),
+                    rotation: Quat::from_rotation_z(angle),
+                    ..default()
+                },
                 GameplayEntity,
             ));
         }
@@ -282,23 +296,16 @@ fn activate_special(
     shake.write(ShakeEvent(SHAKE_SPECIAL));
 }
 
-fn tick_and_draw_beam(
+/// 빔 수명 관리(그리기는 스프라이트가 담당). 판정은 collision::beam_vs_targets.
+fn tick_beam(
     mut commands: Commands,
     time: Res<Time>,
-    mut gizmos: Gizmos,
     mut query: Query<(Entity, &mut SpecialBeam)>,
 ) {
     for (entity, mut beam) in &mut query {
         beam.life.tick(time.delta());
         if beam.life.is_finished() {
             commands.entity(entity).despawn();
-            continue;
-        }
-        let end = beam.origin + beam.dir.normalize_or_zero() * BEAM_LENGTH;
-        // 굵게 보이도록 평행선 여러 개
-        for off in [-8.0, -4.0, 0.0, 4.0, 8.0] {
-            let perp = Vec2::new(-beam.dir.y, beam.dir.x).normalize_or_zero() * off;
-            gizmos.line_2d(beam.origin + perp, end + perp, Color::srgb(1.0, 0.3, 1.0));
         }
     }
 }
