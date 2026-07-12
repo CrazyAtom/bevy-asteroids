@@ -2,9 +2,12 @@ use bevy::prelude::*;
 use rand::RngExt;
 
 use crate::core::components::{Collider, Velocity};
-use crate::core::config::{POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_RADIUS, SHIELD_SECS};
+use crate::core::config::{
+    POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS,
+    SPREAD_SECS,
+};
 use crate::core::state::{GameState, GameplayEntity, Lives};
-use crate::entities::player::{Player, Shield};
+use crate::entities::player::{Player, RapidFire, Shield, Spread};
 use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -116,7 +119,17 @@ fn collect_powerup(
                         .entity(player_entity)
                         .insert(Shield(Timer::from_seconds(SHIELD_SECS, TimerMode::Once)));
                 }
-                // 나머지 종류는 Task 8·9에서 이 match에 팔을 추가해 컴포넌트 부여
+                PowerupKind::RapidFire => {
+                    commands.entity(player_entity).insert(RapidFire(
+                        Timer::from_seconds(RAPID_FIRE_SECS, TimerMode::Once),
+                    ));
+                }
+                PowerupKind::Spread => {
+                    commands
+                        .entity(player_entity)
+                        .insert(Spread(Timer::from_seconds(SPREAD_SECS, TimerMode::Once)));
+                }
+                // 특수무기는 Task 9에서 이 match에 팔을 추가해 컴포넌트 부여
                 _ => {}
             }
             commands.entity(powerup_entity).despawn();

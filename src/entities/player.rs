@@ -23,6 +23,12 @@ pub struct FireCooldown(pub Timer);
 #[derive(Component)]
 pub struct Shield(pub Timer);
 
+#[derive(Component)]
+pub struct RapidFire(pub Timer);
+
+#[derive(Component)]
+pub struct Spread(pub Timer);
+
 /// 우주선 로컬 좌표(정면 = +Y). 마지막 점은 첫 점과 같아 닫힌 외곽선을 만든다.
 const SHIP_POINTS: [Vec2; 5] = [
     Vec2::new(0.0, 16.0),
@@ -39,7 +45,7 @@ impl Plugin for PlayerPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(
                 Update,
-                (player_input, draw_player, shield_tick, draw_shield)
+                (player_input, draw_player, shield_tick, draw_shield, tick_fire_mods)
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(
@@ -146,6 +152,26 @@ fn shield_tick(mut commands: Commands, time: Res<Time>, mut q: Query<(Entity, &m
         shield.0.tick(time.delta());
         if shield.0.is_finished() {
             commands.entity(entity).remove::<Shield>();
+        }
+    }
+}
+
+fn tick_fire_mods(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut rapid: Query<(Entity, &mut RapidFire)>,
+    mut spread: Query<(Entity, &mut Spread)>,
+) {
+    for (e, mut t) in &mut rapid {
+        t.0.tick(time.delta());
+        if t.0.is_finished() {
+            commands.entity(e).remove::<RapidFire>();
+        }
+    }
+    for (e, mut t) in &mut spread {
+        t.0.tick(time.delta());
+        if t.0.is_finished() {
+            commands.entity(e).remove::<Spread>();
         }
     }
 }

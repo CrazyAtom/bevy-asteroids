@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
     BULLET_COLLIDER_RADIUS, BULLET_LIFETIME_SECS, BULLET_SPEED, ENEMY_BULLET_COLLIDER_RADIUS,
-    FIRE_INTERVAL, UFO_BULLET_LIFETIME_SECS,
+    FIRE_INTERVAL, RAPID_FIRE_INTERVAL, SPREAD_ANGLE, UFO_BULLET_LIFETIME_SECS,
 };
-use crate::entities::player::{FireCooldown, Player};
+use crate::entities::player::{FireCooldown, Player, RapidFire, Spread};
 use crate::core::state::{GameState, GameplayEntity};
 use crate::fx::audio::{Sfx, SfxEvent};
 
@@ -71,26 +71,31 @@ fn fire_bullet(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     mut sfx: MessageWriter<SfxEvent>,
-    mut query: Query<(&Transform, &mut FireCooldown), With<Player>>,
+    mut query: Query<(&Transform, &mut FireCooldown, Option<&RapidFire>, Option<&Spread>), With<Player>>,
 ) {
-    let Ok((ship, mut cooldown)) = query.single_mut() else {
+    let Ok((ship, mut cooldown, rapid, spread)) = query.single_mut() else {
         return;
     };
     cooldown.0.tick(time.delta());
     if !keys.pressed(KeyCode::Space) || !cooldown.0.is_finished() {
         return;
     }
-    cooldown.0 = Timer::from_seconds(FIRE_INTERVAL, TimerMode::Once);
-    let forward = (ship.rotation * Vec3::Y).truncate();
-    let nose = ship.translation + (ship.rotation * Vec3::Y) * 18.0;
-    commands.spawn((
-        Bullet { life: Timer::from_seconds(BULLET_LIFETIME_SECS, TimerMode::Once) },
-        Transform::from_translation(nose),
-        Velocity(forward * BULLET_SPEED),
-        Collider { radius: BULLET_COLLIDER_RADIUS },
-        Wrapping,
-        GameplayEntity,
-    ));
+    let interval = if rapid.is_some() { RAPID_FIRE_INTERVAL } else { FIRE_INTERVAL };
+    cooldown.0 = Timer::from_seconds(interval, TimerMode::Once);
+    let base = ship.rotation * Vec3::Y;
+    let nose = ship.translation + base * 18.0;
+    let angles: &[f32] = if spread.is_some() { &[-SPREAD_ANGLE, 0.0, SPREAD_ANGLE] } else { &[0.0] };
+    for &a in angles {
+        let dir = (Quat::from_rotation_z(a) * base).truncate();
+        commands.spawn((
+            Bullet { life: Timer::from_seconds(BULLET_LIFETIME_SECS, TimerMode::Once) },
+            Transform::from_translation(nose),
+            Velocity(dir * BULLET_SPEED),
+            Collider { radius: BULLET_COLLIDER_RADIUS },
+            Wrapping,
+            GameplayEntity,
+        ));
+    }
     sfx.write(SfxEvent(Sfx::Fire));
 }
 
@@ -189,5 +194,29 @@ mod tests {
         let mut cq = app.world_mut().query::<&FireCooldown>();
         let cd = cq.iter(app.world()).next().unwrap();
         assert!(!cd.0.is_finished());
+    }
+
+    #[test]
+    fn spread_fires_three_bullets() {
+        use crate::entities::player::{FireCooldown, Player, Spread};
+        let mut app = App::new();
+        app.add_message::<SfxEvent>();
+        let mut time = Time::<()>::default();
+        time.advance_by(std::time::Duration::from_secs_f32(1.0));
+        app.insert_resource(time);
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::Space);
+        app.insert_resource(keys);
+        let mut cd = Timer::from_seconds(0.25, TimerMode::Once);
+        cd.tick(std::time::Duration::from_secs_f32(1.0));
+        app.world_mut().spawn((
+            Player,
+            Transform::default(),
+            FireCooldown(cd),
+            Spread(Timer::from_seconds(6.0, TimerMode::Once)),
+        ));
+        app.world_mut().run_system_once(fire_bullet).unwrap();
+        let mut q = app.world_mut().query::<&Bullet>();
+        assert_eq!(q.iter(app.world()).count(), 3);
     }
 }

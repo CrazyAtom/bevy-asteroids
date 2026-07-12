@@ -59,6 +59,8 @@ pub const SHAKE_SPECIAL: f32 = 0.5;
 pub const FIRE_INTERVAL: f32 = 0.25;
 pub const RAPID_FIRE_INTERVAL: f32 = 0.10;
 pub const SPREAD_ANGLE: f32 = 0.26; // rad
+pub const RAPID_FIRE_SECS: f32 = 6.0;
+pub const SPREAD_SECS: f32 = 6.0;
 
 // Phase 3 — 파워업
 pub const POWERUP_DROP_CHANCE: f32 = 0.18;
