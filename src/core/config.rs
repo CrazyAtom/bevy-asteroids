@@ -54,3 +54,8 @@ pub const SHAKE_DECAY: f32 = 1.5;
 pub const SHAKE_HIT: f32 = 0.6;
 pub const SHAKE_EXPLOSION: f32 = 0.25;
 pub const SHAKE_SPECIAL: f32 = 0.5;
+
+// Phase 3 — 발사 쿨다운
+pub const FIRE_INTERVAL: f32 = 0.25;
+pub const RAPID_FIRE_INTERVAL: f32 = 0.10;
+pub const SPREAD_ANGLE: f32 = 0.26; // rad

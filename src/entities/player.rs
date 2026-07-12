@@ -17,6 +17,9 @@ pub struct EngineState {
     pub braking: bool,
 }
 
+#[derive(Component)]
+pub struct FireCooldown(pub Timer);
+
 /// 우주선 로컬 좌표(정면 = +Y). 마지막 점은 첫 점과 같아 닫힌 외곽선을 만든다.
 const SHIP_POINTS: [Vec2; 5] = [
     Vec2::new(0.0, 16.0),
@@ -51,6 +54,11 @@ pub fn spawn_player_entity(commands: &mut Commands) {
         Wrapping,
         GameplayEntity,
         EngineState::default(),
+        FireCooldown({
+            let mut t = Timer::from_seconds(crate::core::config::FIRE_INTERVAL, TimerMode::Once);
+            t.tick(t.duration()); // 시작 시 준비완료
+            t
+        }),
     ));
 }
 
