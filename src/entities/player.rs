@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
-    BEAM_LENGTH, BEAM_LIFETIME_SECS, FLAME_COLOR, SHAKE_SPECIAL, SHIP_BRAKE_RATE,
-    SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
-    SHIP_THRUST,
+    BEAM_LENGTH, BEAM_LIFETIME_SECS, FLAME_COLOR, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
+    SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
+    SHIP_ROTATION_SPEED, SHIP_THRUST,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
@@ -32,6 +32,9 @@ pub struct RapidFire(pub Timer);
 
 #[derive(Component)]
 pub struct Spread(pub Timer);
+
+#[derive(Component)]
+pub struct HyperspaceCooldown(pub Timer);
 
 #[derive(Component)]
 pub struct SpecialWeapon {
@@ -70,6 +73,7 @@ impl Plugin for PlayerPlugin {
                     tick_fire_mods,
                     activate_special,
                     tick_and_draw_beam,
+                    hyperspace,
                 )
                     .run_if(in_state(GameState::Playing)),
             )
@@ -78,6 +82,16 @@ impl Plugin for PlayerPlugin {
                 apply_ship_damping.run_if(in_state(GameState::Playing)),
             );
     }
+}
+
+/// 화면 경계 내(90% 범위) 임의 좌표를 반환한다. 하이퍼스페이스 순간이동 목적지 계산에 쓰인다.
+pub fn random_hyperspace_position(half: Vec2) -> Vec2 {
+    use rand::RngExt;
+    let mut rng = rand::rng();
+    Vec2::new(
+        rng.random_range(-half.x * 0.9..half.x * 0.9),
+        rng.random_range(-half.y * 0.9..half.y * 0.9),
+    )
 }
 
 pub fn spawn_player_entity(commands: &mut Commands) {
@@ -95,6 +109,11 @@ pub fn spawn_player_entity(commands: &mut Commands) {
             t
         }),
         SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: 0 },
+        HyperspaceCooldown({
+            let mut t = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
+            t.tick(t.duration()); // 시작 시 준비완료
+            t
+        }),
     ));
 }
 
@@ -262,6 +281,28 @@ fn tick_and_draw_beam(
     }
 }
 
+fn hyperspace(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut sfx: MessageWriter<SfxEvent>,
+    mut query: Query<(&mut Transform, &mut Velocity, &mut HyperspaceCooldown), With<Player>>,
+) {
+    let Ok((mut transform, mut velocity, mut cooldown)) = query.single_mut() else { return };
+    cooldown.0.tick(time.delta());
+    if !keys.just_pressed(KeyCode::KeyH) || !cooldown.0.is_finished() {
+        return;
+    }
+    let pos = random_hyperspace_position(Vec2::new(
+        crate::core::config::HALF_WIDTH,
+        crate::core::config::HALF_HEIGHT,
+    ));
+    transform.translation.x = pos.x;
+    transform.translation.y = pos.y;
+    velocity.0 = Vec2::ZERO;
+    cooldown.0 = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
+    sfx.write(SfxEvent(Sfx::Hyperspace));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -343,6 +384,15 @@ mod tests {
         app.world_mut().run_system_once(apply_ship_damping).unwrap();
         let v = app.world().entity(e).get::<Velocity>().unwrap();
         assert!(v.0.length() <= SHIP_MAX_SPEED + 1e-3);
+    }
+
+    #[test]
+    fn hyperspace_position_within_bounds() {
+        let half = Vec2::new(640.0, 360.0);
+        for _ in 0..20 {
+            let p = random_hyperspace_position(half);
+            assert!(p.x.abs() <= half.x && p.y.abs() <= half.y);
+        }
     }
 
     #[test]

@@ -73,3 +73,6 @@ pub const SHIELD_SECS: f32 = 5.0;
 pub const BEAM_LIFETIME_SECS: f32 = 0.4;
 pub const BEAM_WIDTH: f32 = 22.0;
 pub const BEAM_LENGTH: f32 = 2000.0;
+
+// Phase 3 — 하이퍼스페이스
+pub const HYPERSPACE_COOLDOWN_SECS: f32 = 2.0;
