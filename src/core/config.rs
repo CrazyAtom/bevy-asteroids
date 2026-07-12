@@ -43,3 +43,7 @@ pub const UFO_SMALL_RADIUS: f32 = 12.0;
 pub const UFO_FIRE_INTERVAL_SECS: f32 = 1.4;
 pub const UFO_SPAWN_INTERVAL_BASE: f32 = 12.0;
 pub const UFO_SPAWN_INTERVAL_MIN: f32 = 5.0;
+
+// Phase 3 — 배경
+pub const STAR_COUNT: usize = 120;
+pub const TWINKLE_SPEED: f32 = 2.0;

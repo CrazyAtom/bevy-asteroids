@@ -26,6 +26,7 @@ fn main() {
         .add_plugins(entities::asteroid::AsteroidPlugin)
         .add_plugins(systems::collision::CollisionPlugin)
         .add_plugins(fx::effects::EffectsPlugin)
+        .add_plugins(fx::background::BackgroundPlugin)
         .add_plugins(entities::ufo::UfoPlugin)
         .add_plugins(ui::UiPlugin)
         .add_systems(Startup, (setup_camera, setup_high_score))
