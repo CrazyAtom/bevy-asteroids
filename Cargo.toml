@@ -10,6 +10,10 @@ dirs = "6.0.0"
 rand = "0.10"
 serde = { version = "1.0.228", features = ["derive"] }
 
+# SVG 스프라이트를 빌드 시 PNG로 래스터화(build.rs). 빌드 전용이라 실행 바이너리엔 미포함.
+[build-dependencies]
+resvg = "0.44"
+
 # 내 코드는 빠르게 증분 컴파일하되, 의존성(bevy 등)은 최적화해 런타임 성능 확보
 [profile.dev.package."*"]
 opt-level = 3
