@@ -7,6 +7,7 @@ use crate::core::config::{
 };
 use crate::entities::player::Player;
 use crate::core::state::{GameState, GameplayEntity};
+use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(Component)]
 pub struct Bullet {
@@ -69,6 +70,7 @@ fn fire_bullet(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
     query: Query<&Transform, With<Player>>,
+    mut sfx: MessageWriter<SfxEvent>,
 ) {
     if !keys.just_pressed(KeyCode::Space) {
         return;
@@ -88,6 +90,7 @@ fn fire_bullet(
         Wrapping,
         GameplayEntity,
     ));
+    sfx.write(SfxEvent(Sfx::Fire));
 }
 
 fn bullet_lifetime(

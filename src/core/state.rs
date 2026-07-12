@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::config::STARTING_LIVES;
 use crate::core::logic::update_high_score;
+use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum GameState {
@@ -38,7 +39,7 @@ impl Plugin for GameStatePlugin {
             .insert_resource(Wave(1))
             .add_systems(OnEnter(GameState::Playing), reset_game)
             .add_systems(OnExit(GameState::Playing), despawn_gameplay_entities)
-            .add_systems(OnEnter(GameState::GameOver), save_high_score);
+            .add_systems(OnEnter(GameState::GameOver), (save_high_score, play_game_over_sfx));
     }
 }
 
@@ -66,6 +67,10 @@ fn save_high_score(score: Res<Score>, mut high: ResMut<Persistent<HighScore>>) {
         high.0 = updated;
         let _ = high.persist();
     }
+}
+
+fn play_game_over_sfx(mut sfx: MessageWriter<SfxEvent>) {
+    sfx.write(SfxEvent(Sfx::GameOver));
 }
 
 #[cfg(test)]

@@ -9,6 +9,7 @@ use crate::core::config::EXPLOSION_PARTICLES;
 use crate::core::config::{SHAKE_EXPLOSION, SHAKE_HIT};
 use crate::fx::effects::spawn_explosion;
 use crate::fx::shake::ShakeEvent;
+use crate::fx::audio::{Sfx, SfxEvent};
 use crate::core::logic::{circles_overlap, next_asteroid_size};
 use crate::entities::player::{spawn_player_entity, Player};
 use crate::core::state::{GameState, Lives, Score};
@@ -29,6 +30,7 @@ fn bullet_vs_asteroid(
     mut commands: Commands,
     mut score: ResMut<Score>,
     mut shake: MessageWriter<ShakeEvent>,
+    mut sfx: MessageWriter<SfxEvent>,
     bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
     asteroids: Query<(Entity, &Transform, &Collider, &Asteroid)>,
 ) {
@@ -51,6 +53,7 @@ fn bullet_vs_asteroid(
                 score.0 += asteroid.size.score();
                 spawn_explosion(&mut commands, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
+                sfx.write(SfxEvent(Sfx::Explosion));
 
                 if let Some(next) = next_asteroid_size(asteroid.size) {
                     let base = asteroid_tf.translation.truncate();
@@ -68,6 +71,7 @@ fn bullet_vs_ufo(
     mut commands: Commands,
     mut score: ResMut<Score>,
     mut shake: MessageWriter<ShakeEvent>,
+    mut sfx: MessageWriter<SfxEvent>,
     bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
     ufos: Query<(Entity, &Transform, &Collider, &Ufo)>,
 ) {
@@ -89,6 +93,7 @@ fn bullet_vs_ufo(
                 score.0 += ufo.size.score();
                 spawn_explosion(&mut commands, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
+                sfx.write(SfxEvent(Sfx::Explosion));
                 break;
             }
         }
@@ -163,6 +168,7 @@ mod tests {
     fn bullet_splits_large_asteroid_and_scores() {
         let mut app = App::new();
         app.add_message::<crate::fx::shake::ShakeEvent>();
+        app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
         let bullet = app
             .world_mut()
@@ -195,6 +201,7 @@ mod tests {
     fn small_asteroid_vanishes_without_children() {
         let mut app = App::new();
         app.add_message::<crate::fx::shake::ShakeEvent>();
+        app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
         app.world_mut().spawn((
             Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
@@ -217,6 +224,7 @@ mod tests {
     fn destroying_asteroid_spawns_particles() {
         let mut app = App::new();
         app.add_message::<crate::fx::shake::ShakeEvent>();
+        app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
         app.world_mut().spawn((
             Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
@@ -290,6 +298,7 @@ mod tests {
         use crate::entities::ufo::{Ufo, UfoSize};
         let mut app = App::new();
         app.add_message::<crate::fx::shake::ShakeEvent>();
+        app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
         let bullet = app.world_mut().spawn((
             Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },

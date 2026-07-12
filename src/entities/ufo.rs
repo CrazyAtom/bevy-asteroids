@@ -10,6 +10,7 @@ use crate::core::config::{
 use crate::core::logic::aim_direction;
 use crate::entities::player::Player;
 use crate::core::state::{GameState, GameplayEntity};
+use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UfoSize {
@@ -111,6 +112,7 @@ fn ufo_fire(
     time: Res<Time>,
     mut ufos: Query<(&Transform, &mut Ufo)>,
     players: Query<&Transform, With<Player>>,
+    mut sfx: MessageWriter<SfxEvent>,
 ) {
     let player_pos = players.single().ok().map(|t| t.translation.truncate());
     for (ufo_tf, mut ufo) in &mut ufos {
@@ -127,6 +129,7 @@ fn ufo_fire(
             UfoSize::Large => random_unit_dir(),
         };
         spawn_enemy_bullet(&mut commands, origin, dir * UFO_BULLET_SPEED);
+        sfx.write(SfxEvent(Sfx::UfoFire));
     }
 }
 
