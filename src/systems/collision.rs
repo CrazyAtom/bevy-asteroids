@@ -58,7 +58,7 @@ fn bullet_vs_asteroid(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(asteroid_entity).despawn();
                 score.0 += asteroid.size.score();
-                spawn_explosion(&mut commands, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
                 sfx.write(SfxEvent(Sfx::Explosion));
 
@@ -106,7 +106,7 @@ fn bullet_vs_ufo(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(ufo_entity).despawn();
                 score.0 += ufo.size.score();
-                spawn_explosion(&mut commands, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
                 sfx.write(SfxEvent(Sfx::Explosion));
                 {
@@ -121,8 +121,10 @@ fn bullet_vs_ufo(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn beam_vs_targets(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     mut score: ResMut<Score>,
     mut sfx: MessageWriter<SfxEvent>,
     beams: Query<&SpecialBeam>,
@@ -140,7 +142,7 @@ fn beam_vs_targets(
                 destroyed.insert(e);
                 commands.entity(e).despawn();
                 score.0 += asteroid.size.score();
-                spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));
             }
         }
@@ -152,7 +154,7 @@ fn beam_vs_targets(
                 destroyed.insert(e);
                 commands.entity(e).despawn();
                 score.0 += ufo.size.score();
-                spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));
             }
         }
@@ -209,7 +211,7 @@ fn player_damage(
         return;
     }
 
-    spawn_explosion(&mut commands, ppos, EXPLOSION_PARTICLES);
+    spawn_explosion(&mut commands, &assets, ppos, EXPLOSION_PARTICLES);
     shake.write(ShakeEvent(SHAKE_HIT));
     lives.0 = lives.0.saturating_sub(1);
     commands.entity(player_entity).despawn();
