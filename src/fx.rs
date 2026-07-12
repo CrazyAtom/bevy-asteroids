@@ -1,3 +1,4 @@
+pub mod animation;
 pub mod audio;
 pub mod background;
 pub mod effects;

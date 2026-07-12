@@ -41,6 +41,8 @@ pub fn spawn_explosion(commands: &mut Commands, assets: &SpriteAssets, position:
             GameplayEntity,
         ));
     }
+    // 폭발 지점에 프레임 애니메이션 폭발도 함께 재생.
+    crate::fx::animation::spawn_explosion_anim(commands, assets, position);
 }
 
 fn particle_lifetime(mut commands: Commands, time: Res<Time>, mut query: Query<(Entity, &mut Particle)>) {
