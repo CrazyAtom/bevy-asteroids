@@ -101,6 +101,14 @@ pub fn decay_trauma(trauma: f32, dt: f32) -> f32 {
     (trauma - crate::core::config::SHAKE_DECAY * dt).max(0.0)
 }
 
+/// origin에서 dir 방향으로 length만큼 뻗는 반폭 half_width 빔이 중심 center·반지름 radius 원과 겹치는지.
+pub fn segment_circle_hit(origin: Vec2, dir: Vec2, length: f32, half_width: f32, center: Vec2, radius: f32) -> bool {
+    let d = dir.normalize_or_zero();
+    let t = (center - origin).dot(d).clamp(0.0, length);
+    let closest = origin + d * t;
+    closest.distance(center) <= half_width + radius
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,5 +222,17 @@ mod tests {
         assert_eq!(asteroid_speed_scale_for_wave(1000), 2.0);     // 속도 배수 상한
         assert_eq!(ufo_interval_for_wave(1000), 5.0);             // UFO 간격 하한
         assert_eq!(small_ufo_probability_for_wave(1000), 0.9);    // 소형 확률 상한
+    }
+
+    #[test]
+    fn beam_hits_target_on_path_not_off() {
+        let o = Vec2::ZERO;
+        let dir = Vec2::Y;
+        // 경로 위(위쪽 100)의 원
+        assert!(segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(0.0, 100.0), 20.0));
+        // 경로에서 멀리 옆
+        assert!(!segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(200.0, 100.0), 20.0));
+        // 뒤쪽(반대 방향)은 안 맞음
+        assert!(!segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(0.0, -100.0), 20.0));
     }
 }

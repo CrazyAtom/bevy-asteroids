@@ -7,7 +7,7 @@ use crate::core::config::{
     SPREAD_SECS,
 };
 use crate::core::state::{GameState, GameplayEntity, Lives};
-use crate::entities::player::{Player, RapidFire, Shield, Spread};
+use crate::entities::player::{Player, RapidFire, Shield, SpecialWeapon, Spread};
 use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -101,6 +101,7 @@ fn collect_powerup(
     mut sfx: MessageWriter<SfxEvent>,
     players: Query<(Entity, &Transform, &Collider), With<Player>>,
     powerups: Query<(Entity, &Transform, &Collider, &Powerup)>,
+    mut special_q: Query<&mut SpecialWeapon>,
 ) {
     let Ok((player_entity, player_tf, player_col)) = players.single() else {
         return;
@@ -129,8 +130,12 @@ fn collect_powerup(
                         .entity(player_entity)
                         .insert(Spread(Timer::from_seconds(SPREAD_SECS, TimerMode::Once)));
                 }
-                // 특수무기는 Task 9에서 이 match에 팔을 추가해 컴포넌트 부여
-                _ => {}
+                PowerupKind::SpecialWeapon(kind) => {
+                    if let Ok(mut weapon) = special_q.get_mut(player_entity) {
+                        weapon.kind = kind;
+                        weapon.charges += 1;
+                    }
+                }
             }
             commands.entity(powerup_entity).despawn();
             sfx.write(SfxEvent(Sfx::Pickup));

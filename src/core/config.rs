@@ -68,3 +68,8 @@ pub const POWERUP_LIFETIME_SECS: f32 = 8.0;
 pub const POWERUP_DRIFT_SPEED: f32 = 30.0;
 pub const POWERUP_RADIUS: f32 = 12.0;
 pub const SHIELD_SECS: f32 = 5.0;
+
+// Phase 3 — 특수무기
+pub const BEAM_LIFETIME_SECS: f32 = 0.4;
+pub const BEAM_WIDTH: f32 = 22.0;
+pub const BEAM_LENGTH: f32 = 2000.0;

@@ -2,11 +2,15 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
-    FLAME_COLOR, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
-    SHIP_ROTATION_SPEED, SHIP_THRUST,
+    BEAM_LENGTH, BEAM_LIFETIME_SECS, FLAME_COLOR, SHAKE_SPECIAL, SHIP_BRAKE_RATE,
+    SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
+    SHIP_THRUST,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
+use crate::entities::powerup::SpecialWeaponKind;
+use crate::fx::audio::{Sfx, SfxEvent};
+use crate::fx::shake::ShakeEvent;
 
 #[derive(Component)]
 pub struct Player;
@@ -29,6 +33,19 @@ pub struct RapidFire(pub Timer);
 #[derive(Component)]
 pub struct Spread(pub Timer);
 
+#[derive(Component)]
+pub struct SpecialWeapon {
+    pub kind: SpecialWeaponKind,
+    pub charges: u32,
+}
+
+#[derive(Component)]
+pub struct SpecialBeam {
+    pub life: Timer,
+    pub origin: Vec2,
+    pub dir: Vec2,
+}
+
 /// 우주선 로컬 좌표(정면 = +Y). 마지막 점은 첫 점과 같아 닫힌 외곽선을 만든다.
 const SHIP_POINTS: [Vec2; 5] = [
     Vec2::new(0.0, 16.0),
@@ -45,7 +62,15 @@ impl Plugin for PlayerPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(
                 Update,
-                (player_input, draw_player, shield_tick, draw_shield, tick_fire_mods)
+                (
+                    player_input,
+                    draw_player,
+                    shield_tick,
+                    draw_shield,
+                    tick_fire_mods,
+                    activate_special,
+                    tick_and_draw_beam,
+                )
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(
@@ -69,6 +94,7 @@ pub fn spawn_player_entity(commands: &mut Commands) {
             t.tick(t.duration()); // 시작 시 준비완료
             t
         }),
+        SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: 0 },
     ));
 }
 
@@ -183,6 +209,56 @@ fn draw_shield(mut gizmos: Gizmos, q: Query<&Transform, (With<Player>, With<Shie
             18.0,
             Color::srgb(0.3, 0.7, 1.0),
         );
+    }
+}
+
+fn activate_special(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut sfx: MessageWriter<SfxEvent>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut query: Query<(&Transform, &mut SpecialWeapon), With<Player>>,
+) {
+    if !keys.just_pressed(KeyCode::KeyX) {
+        return;
+    }
+    let Ok((transform, mut weapon)) = query.single_mut() else { return };
+    if weapon.charges == 0 {
+        return;
+    }
+    weapon.charges -= 1;
+    let origin = transform.translation.truncate();
+    let dir = (transform.rotation * Vec3::Y).truncate();
+    match weapon.kind {
+        SpecialWeaponKind::LaserBeam => {
+            commands.spawn((
+                SpecialBeam { life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once), origin, dir },
+                GameplayEntity,
+            ));
+        }
+    }
+    sfx.write(SfxEvent(Sfx::Special));
+    shake.write(ShakeEvent(SHAKE_SPECIAL));
+}
+
+fn tick_and_draw_beam(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut gizmos: Gizmos,
+    mut query: Query<(Entity, &mut SpecialBeam)>,
+) {
+    for (entity, mut beam) in &mut query {
+        beam.life.tick(time.delta());
+        if beam.life.is_finished() {
+            commands.entity(entity).despawn();
+            continue;
+        }
+        let end = beam.origin + beam.dir.normalize_or_zero() * BEAM_LENGTH;
+        // 굵게 보이도록 평행선 여러 개
+        for off in [-8.0, -4.0, 0.0, 4.0, 8.0] {
+            let perp = Vec2::new(-beam.dir.y, beam.dir.x).normalize_or_zero() * off;
+            gizmos.line_2d(beam.origin + perp, end + perp, Color::srgb(1.0, 0.3, 1.0));
+        }
     }
 }
 

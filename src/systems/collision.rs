@@ -8,12 +8,12 @@ use crate::entities::powerup::{pick_powerup_kind, spawn_powerup};
 use crate::core::components::Collider;
 use crate::core::config::EXPLOSION_PARTICLES;
 use crate::core::config::POWERUP_DROP_CHANCE;
-use crate::core::config::{SHAKE_EXPLOSION, SHAKE_HIT};
+use crate::core::config::{BEAM_LENGTH, BEAM_WIDTH, SHAKE_EXPLOSION, SHAKE_HIT};
 use crate::fx::effects::spawn_explosion;
 use crate::fx::shake::ShakeEvent;
 use crate::fx::audio::{Sfx, SfxEvent};
-use crate::core::logic::{circles_overlap, next_asteroid_size};
-use crate::entities::player::{spawn_player_entity, Player, Shield};
+use crate::core::logic::{circles_overlap, next_asteroid_size, segment_circle_hit};
+use crate::entities::player::{spawn_player_entity, Player, Shield, SpecialBeam};
 use crate::core::state::{GameState, Lives, Score};
 use crate::entities::ufo::Ufo;
 use rand::RngExt;
@@ -24,7 +24,8 @@ impl Plugin for CollisionPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (bullet_vs_asteroid, bullet_vs_ufo, player_damage).run_if(in_state(GameState::Playing)),
+            (bullet_vs_asteroid, bullet_vs_ufo, player_damage, beam_vs_targets)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -110,6 +111,34 @@ fn bullet_vs_ufo(
                     }
                 }
                 break;
+            }
+        }
+    }
+}
+
+fn beam_vs_targets(
+    mut commands: Commands,
+    mut score: ResMut<Score>,
+    mut sfx: MessageWriter<SfxEvent>,
+    beams: Query<&SpecialBeam>,
+    asteroids: Query<(Entity, &Transform, &Collider, &Asteroid)>,
+    ufos: Query<(Entity, &Transform, &Collider, &Ufo)>,
+) {
+    for beam in &beams {
+        for (e, tf, col, asteroid) in &asteroids {
+            if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
+                commands.entity(e).despawn();
+                score.0 += asteroid.size.score();
+                spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
+                sfx.write(SfxEvent(Sfx::Explosion));
+            }
+        }
+        for (e, tf, col, ufo) in &ufos {
+            if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
+                commands.entity(e).despawn();
+                score.0 += ufo.size.score();
+                spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
+                sfx.write(SfxEvent(Sfx::Explosion));
             }
         }
     }
