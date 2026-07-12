@@ -62,7 +62,11 @@ fn advance_animation(
         if !anim.timer.is_finished() {
             continue;
         }
-        let last = anim.frames.len() - 1;
+        // 프레임이 비어 있으면(불변식 위반) 조용히 제거해 언더플로 패닉을 방지.
+        let Some(last) = anim.frames.len().checked_sub(1) else {
+            commands.entity(entity).despawn();
+            continue;
+        };
         match next_frame_index(anim.index, last) {
             Some(next) => {
                 anim.index = next;

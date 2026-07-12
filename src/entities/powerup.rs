@@ -53,7 +53,7 @@ pub fn pick_powerup_kind(roll: f32) -> PowerupKind {
     }
 }
 
-/// PowerupKind → SpriteAssets.powerup 배열 인덱스(스폰·HUD 공용).
+/// PowerupKind → SpriteAssets.powerup 배열 인덱스.
 pub fn powerup_sprite_index(kind: PowerupKind) -> usize {
     match kind {
         PowerupKind::Shield => 0,
