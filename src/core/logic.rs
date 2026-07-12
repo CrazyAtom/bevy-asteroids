@@ -76,7 +76,7 @@ pub fn aim_direction(from: Vec2, to: Vec2) -> Vec2 {
 }
 
 pub fn asteroid_count_for_wave(wave: u32) -> usize {
-    (crate::config::BASE_ASTEROIDS + wave as usize).min(crate::config::MAX_ASTEROIDS)
+    (crate::core::config::BASE_ASTEROIDS + wave as usize).min(crate::core::config::MAX_ASTEROIDS)
 }
 
 pub fn asteroid_speed_scale_for_wave(wave: u32) -> f32 {
@@ -84,8 +84,8 @@ pub fn asteroid_speed_scale_for_wave(wave: u32) -> f32 {
 }
 
 pub fn ufo_interval_for_wave(wave: u32) -> f32 {
-    (crate::config::UFO_SPAWN_INTERVAL_BASE - wave as f32 * 0.8)
-        .max(crate::config::UFO_SPAWN_INTERVAL_MIN)
+    (crate::core::config::UFO_SPAWN_INTERVAL_BASE - wave as f32 * 0.8)
+        .max(crate::core::config::UFO_SPAWN_INTERVAL_MIN)
 }
 
 pub fn small_ufo_probability_for_wave(wave: u32) -> f32 {

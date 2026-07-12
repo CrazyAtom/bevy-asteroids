@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 
-use crate::components::{Collider, Velocity, Wrapping};
-use crate::config::{
+use crate::core::components::{Collider, Velocity, Wrapping};
+use crate::core::config::{
     BULLET_COLLIDER_RADIUS, BULLET_LIFETIME_SECS, BULLET_SPEED, ENEMY_BULLET_COLLIDER_RADIUS,
     UFO_BULLET_LIFETIME_SECS,
 };
-use crate::player::Player;
-use crate::state::{GameState, GameplayEntity};
+use crate::entities::player::Player;
+use crate::core::state::{GameState, GameplayEntity};
 
 #[derive(Component)]
 pub struct Bullet {

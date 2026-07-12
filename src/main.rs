@@ -1,14 +1,7 @@
-mod asteroid;
-mod bullet;
-mod collision;
-mod components;
-mod config;
-mod effects;
-mod logic;
-mod movement;
-mod player;
-mod state;
-mod ufo;
+mod core;
+mod entities;
+mod fx;
+mod systems;
 mod ui;
 
 use bevy::prelude::*;
@@ -26,14 +19,14 @@ fn main() {
         }))
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(Time::<Fixed>::from_hz(60.0))
-        .add_plugins(movement::MovementPlugin)
-        .add_plugins(state::GameStatePlugin)
-        .add_plugins(player::PlayerPlugin)
-        .add_plugins(bullet::BulletPlugin)
-        .add_plugins(asteroid::AsteroidPlugin)
-        .add_plugins(collision::CollisionPlugin)
-        .add_plugins(effects::EffectsPlugin)
-        .add_plugins(ufo::UfoPlugin)
+        .add_plugins(systems::movement::MovementPlugin)
+        .add_plugins(core::state::GameStatePlugin)
+        .add_plugins(entities::player::PlayerPlugin)
+        .add_plugins(entities::bullet::BulletPlugin)
+        .add_plugins(entities::asteroid::AsteroidPlugin)
+        .add_plugins(systems::collision::CollisionPlugin)
+        .add_plugins(fx::effects::EffectsPlugin)
+        .add_plugins(entities::ufo::UfoPlugin)
         .add_plugins(ui::UiPlugin)
         .add_systems(Startup, (setup_camera, setup_high_score))
         .run();
@@ -48,11 +41,11 @@ fn setup_high_score(mut commands: Commands) {
         .map(|d| d.join("bevy-asteroids"))
         .unwrap_or_else(|| std::path::PathBuf::from("."));
     commands.insert_resource(
-        Persistent::<state::HighScore>::builder()
+        Persistent::<core::state::HighScore>::builder()
             .name("high score")
             .format(StorageFormat::Json)
             .path(dir.join("highscore.json"))
-            .default(state::HighScore(0))
+            .default(core::state::HighScore(0))
             .revertible(true)
             .revert_to_default_on_deserialization_errors(true)
             .build()

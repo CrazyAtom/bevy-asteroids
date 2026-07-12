@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 
-use crate::components::{Collider, Velocity, Wrapping};
-use crate::config::{
+use crate::core::components::{Collider, Velocity, Wrapping};
+use crate::core::config::{
     FLAME_COLOR, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_COLOR, SHIP_DAMPING, SHIP_MAX_SPEED,
     SHIP_ROTATION_SPEED, SHIP_THRUST,
 };
-use crate::logic::apply_brake;
-use crate::state::{GameState, GameplayEntity};
+use crate::core::logic::apply_brake;
+use crate::core::state::{GameState, GameplayEntity};
 
 #[derive(Component)]
 pub struct Player;
@@ -132,7 +132,7 @@ fn draw_player(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::components::Velocity;
+    use crate::core::components::Velocity;
     use bevy::ecs::system::RunSystemOnce;
     use std::time::Duration;
 

@@ -2,15 +2,15 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 
-use crate::asteroid::{random_velocity, spawn_asteroid, Asteroid};
-use crate::bullet::{Bullet, EnemyBullet};
-use crate::components::Collider;
-use crate::config::EXPLOSION_PARTICLES;
-use crate::effects::spawn_explosion;
-use crate::logic::{circles_overlap, next_asteroid_size};
-use crate::player::{spawn_player_entity, Player};
-use crate::state::{GameState, Lives, Score};
-use crate::ufo::Ufo;
+use crate::entities::asteroid::{random_velocity, spawn_asteroid, Asteroid};
+use crate::entities::bullet::{Bullet, EnemyBullet};
+use crate::core::components::Collider;
+use crate::core::config::EXPLOSION_PARTICLES;
+use crate::fx::effects::spawn_explosion;
+use crate::core::logic::{circles_overlap, next_asteroid_size};
+use crate::entities::player::{spawn_player_entity, Player};
+use crate::core::state::{GameState, Lives, Score};
+use crate::entities::ufo::Ufo;
 
 pub struct CollisionPlugin;
 
@@ -146,8 +146,8 @@ fn player_damage(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::components::Collider;
-    use crate::logic::AsteroidSize;
+    use crate::core::components::Collider;
+    use crate::core::logic::AsteroidSize;
     use bevy::ecs::system::RunSystemOnce;
 
     #[test]
@@ -217,7 +217,7 @@ mod tests {
             Collider { radius: AsteroidSize::Small.radius() },
         ));
         app.world_mut().run_system_once(bullet_vs_asteroid).unwrap();
-        let mut q = app.world_mut().query::<&crate::effects::Particle>();
+        let mut q = app.world_mut().query::<&crate::fx::effects::Particle>();
         assert!(q.iter(app.world()).count() > 0);
     }
 
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn bullet_destroys_ufo_and_scores() {
-        use crate::ufo::{Ufo, UfoSize};
+        use crate::entities::ufo::{Ufo, UfoSize};
         let mut app = App::new();
         app.insert_resource(Score(0));
         let bullet = app.world_mut().spawn((
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn simultaneous_hits_cost_only_one_life() {
-        use crate::ufo::{Ufo, UfoSize};
+        use crate::entities::ufo::{Ufo, UfoSize};
         let mut app = App::new();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();

@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bevy_persistent::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::config::STARTING_LIVES;
-use crate::logic::update_high_score;
+use crate::core::config::STARTING_LIVES;
+use crate::core::logic::update_high_score;
 
 #[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum GameState {
@@ -46,12 +46,12 @@ fn reset_game(
     mut score: ResMut<Score>,
     mut lives: ResMut<Lives>,
     mut wave: ResMut<Wave>,
-    mut ufo_spawn_timer: ResMut<crate::ufo::UfoSpawnTimer>,
+    mut ufo_spawn_timer: ResMut<crate::entities::ufo::UfoSpawnTimer>,
 ) {
     score.0 = 0;
     lives.0 = STARTING_LIVES;
     wave.0 = 1;
-    ufo_spawn_timer.0 = Timer::from_seconds(crate::config::UFO_SPAWN_INTERVAL_BASE, TimerMode::Once);
+    ufo_spawn_timer.0 = Timer::from_seconds(crate::core::config::UFO_SPAWN_INTERVAL_BASE, TimerMode::Once);
 }
 
 fn despawn_gameplay_entities(mut commands: Commands, query: Query<Entity, With<GameplayEntity>>) {
@@ -72,8 +72,8 @@ fn save_high_score(score: Res<Score>, mut high: ResMut<Persistent<HighScore>>) {
 mod tests {
     use super::*;
     use bevy::ecs::system::RunSystemOnce;
-    use crate::config::UFO_SPAWN_INTERVAL_BASE;
-    use crate::ufo::UfoSpawnTimer;
+    use crate::core::config::UFO_SPAWN_INTERVAL_BASE;
+    use crate::entities::ufo::UfoSpawnTimer;
 
     #[test]
     fn restart_resets_ufo_spawn_timer() {

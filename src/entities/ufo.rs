@@ -1,15 +1,15 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::bullet::spawn_enemy_bullet;
-use crate::components::{Collider, Velocity};
-use crate::config::{
+use crate::entities::bullet::spawn_enemy_bullet;
+use crate::core::components::{Collider, Velocity};
+use crate::core::config::{
     HALF_HEIGHT, HALF_WIDTH, UFO_BULLET_SPEED, UFO_FIRE_INTERVAL_SECS, UFO_LARGE_RADIUS,
     UFO_SMALL_RADIUS, UFO_SPEED,
 };
-use crate::logic::aim_direction;
-use crate::player::Player;
-use crate::state::{GameState, GameplayEntity};
+use crate::core::logic::aim_direction;
+use crate::entities::player::Player;
+use crate::core::state::{GameState, GameplayEntity};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum UfoSize {
@@ -46,7 +46,7 @@ pub struct UfoPlugin;
 impl Plugin for UfoPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(UfoSpawnTimer(Timer::from_seconds(
-            crate::config::UFO_SPAWN_INTERVAL_BASE,
+            crate::core::config::UFO_SPAWN_INTERVAL_BASE,
             TimerMode::Once,
         )))
         .add_systems(
@@ -60,7 +60,7 @@ impl Plugin for UfoPlugin {
 fn ufo_spawn_system(
     mut commands: Commands,
     time: Res<Time>,
-    wave: Res<crate::state::Wave>,
+    wave: Res<crate::core::state::Wave>,
     mut timer: ResMut<UfoSpawnTimer>,
 ) {
     timer.0.tick(time.delta());
@@ -68,7 +68,7 @@ fn ufo_spawn_system(
         return;
     }
     let mut rng = rand::rng();
-    let size = if rng.random_range(0.0..1.0) < crate::logic::small_ufo_probability_for_wave(wave.0)
+    let size = if rng.random_range(0.0..1.0) < crate::core::logic::small_ufo_probability_for_wave(wave.0)
     {
         UfoSize::Small
     } else {
@@ -77,7 +77,7 @@ fn ufo_spawn_system(
     let from_left = rng.random_range(0.0..1.0) < 0.5;
     spawn_ufo(&mut commands, size, from_left);
     // 다음 간격을 웨이브 기반으로 재설정
-    let interval = crate::logic::ufo_interval_for_wave(wave.0);
+    let interval = crate::core::logic::ufo_interval_for_wave(wave.0);
     timer.0 = Timer::from_seconds(interval, TimerMode::Once);
 }
 

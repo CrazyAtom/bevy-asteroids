@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::text::FontSize;
 use bevy_persistent::prelude::*;
 
-use crate::state::{GameState, GameplayEntity, HighScore, Lives, Score, Wave};
+use crate::core::state::{GameState, GameplayEntity, HighScore, Lives, Score, Wave};
 
 #[derive(Component)]
 struct Hud;

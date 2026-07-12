@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::components::Velocity;
-use crate::config::{PARTICLE_LIFETIME_SECS, PARTICLE_SPEED_MAX, PARTICLE_SPEED_MIN};
-use crate::state::{GameState, GameplayEntity};
+use crate::core::components::Velocity;
+use crate::core::config::{PARTICLE_LIFETIME_SECS, PARTICLE_SPEED_MAX, PARTICLE_SPEED_MIN};
+use crate::core::state::{GameState, GameplayEntity};
 
 #[derive(Component)]
 pub struct Particle {
