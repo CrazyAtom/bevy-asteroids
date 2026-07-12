@@ -96,6 +96,11 @@ pub fn update_high_score(current: u32, new: u32) -> u32 {
     current.max(new)
 }
 
+/// trauma를 dt만큼 감쇠(0 미만으로 내려가지 않음).
+pub fn decay_trauma(trauma: f32, dt: f32) -> f32 {
+    (trauma - crate::core::config::SHAKE_DECAY * dt).max(0.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -179,6 +184,13 @@ mod tests {
         assert_eq!(update_high_score(100, 250), 250);
         assert_eq!(update_high_score(300, 250), 300);
         assert_eq!(update_high_score(0, 0), 0);
+    }
+
+    #[test]
+    fn trauma_decays_to_zero_not_below() {
+        let t = decay_trauma(0.5, 0.1);
+        assert!((0.0..0.5).contains(&t));
+        assert_eq!(decay_trauma(0.05, 100.0), 0.0); // 큰 dt여도 음수 아님
     }
 
     #[test]

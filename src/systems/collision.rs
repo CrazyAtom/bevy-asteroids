@@ -6,7 +6,9 @@ use crate::entities::asteroid::{random_velocity, spawn_asteroid, Asteroid};
 use crate::entities::bullet::{Bullet, EnemyBullet};
 use crate::core::components::Collider;
 use crate::core::config::EXPLOSION_PARTICLES;
+use crate::core::config::{SHAKE_EXPLOSION, SHAKE_HIT};
 use crate::fx::effects::spawn_explosion;
+use crate::fx::shake::ShakeEvent;
 use crate::core::logic::{circles_overlap, next_asteroid_size};
 use crate::entities::player::{spawn_player_entity, Player};
 use crate::core::state::{GameState, Lives, Score};
@@ -26,6 +28,7 @@ impl Plugin for CollisionPlugin {
 fn bullet_vs_asteroid(
     mut commands: Commands,
     mut score: ResMut<Score>,
+    mut shake: MessageWriter<ShakeEvent>,
     bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
     asteroids: Query<(Entity, &Transform, &Collider, &Asteroid)>,
 ) {
@@ -47,6 +50,7 @@ fn bullet_vs_asteroid(
                 commands.entity(asteroid_entity).despawn();
                 score.0 += asteroid.size.score();
                 spawn_explosion(&mut commands, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
+                shake.write(ShakeEvent(SHAKE_EXPLOSION));
 
                 if let Some(next) = next_asteroid_size(asteroid.size) {
                     let base = asteroid_tf.translation.truncate();
@@ -63,6 +67,7 @@ fn bullet_vs_asteroid(
 fn bullet_vs_ufo(
     mut commands: Commands,
     mut score: ResMut<Score>,
+    mut shake: MessageWriter<ShakeEvent>,
     bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
     ufos: Query<(Entity, &Transform, &Collider, &Ufo)>,
 ) {
@@ -83,16 +88,19 @@ fn bullet_vs_ufo(
                 commands.entity(ufo_entity).despawn();
                 score.0 += ufo.size.score();
                 spawn_explosion(&mut commands, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
+                shake.write(ShakeEvent(SHAKE_EXPLOSION));
                 break;
             }
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn player_damage(
     mut commands: Commands,
     mut lives: ResMut<Lives>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut shake: MessageWriter<ShakeEvent>,
     players: Query<(Entity, &Transform, &Collider), With<Player>>,
     asteroids: Query<(&Transform, &Collider), With<Asteroid>>,
     ufos: Query<(&Transform, &Collider), With<Ufo>>,
@@ -134,6 +142,7 @@ fn player_damage(
     }
 
     spawn_explosion(&mut commands, ppos, EXPLOSION_PARTICLES);
+    shake.write(ShakeEvent(SHAKE_HIT));
     lives.0 = lives.0.saturating_sub(1);
     commands.entity(player_entity).despawn();
     if lives.0 == 0 {
@@ -153,6 +162,7 @@ mod tests {
     #[test]
     fn bullet_splits_large_asteroid_and_scores() {
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.insert_resource(Score(0));
         let bullet = app
             .world_mut()
@@ -184,6 +194,7 @@ mod tests {
     #[test]
     fn small_asteroid_vanishes_without_children() {
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.insert_resource(Score(0));
         app.world_mut().spawn((
             Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
@@ -205,6 +216,7 @@ mod tests {
     #[test]
     fn destroying_asteroid_spawns_particles() {
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.insert_resource(Score(0));
         app.world_mut().spawn((
             Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
@@ -224,6 +236,7 @@ mod tests {
     #[test]
     fn player_hit_loses_life_and_respawns() {
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
         app.insert_resource(Lives(3));
@@ -248,6 +261,7 @@ mod tests {
     #[test]
     fn last_life_triggers_game_over() {
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
         app.insert_resource(Lives(1));
@@ -275,6 +289,7 @@ mod tests {
     fn bullet_destroys_ufo_and_scores() {
         use crate::entities::ufo::{Ufo, UfoSize};
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.insert_resource(Score(0));
         let bullet = app.world_mut().spawn((
             Bullet { life: Timer::from_seconds(1.0, TimerMode::Once) },
@@ -296,6 +311,7 @@ mod tests {
     #[test]
     fn enemy_bullet_hits_player_loses_life() {
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
         app.insert_resource(Lives(3));
@@ -315,6 +331,7 @@ mod tests {
     fn simultaneous_hits_cost_only_one_life() {
         use crate::entities::ufo::{Ufo, UfoSize};
         let mut app = App::new();
+        app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
         app.insert_resource(Lives(3));

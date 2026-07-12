@@ -47,3 +47,10 @@ pub const UFO_SPAWN_INTERVAL_MIN: f32 = 5.0;
 // Phase 3 — 배경
 pub const STAR_COUNT: usize = 120;
 pub const TWINKLE_SPEED: f32 = 2.0;
+
+// Phase 3 — 화면 흔들림
+pub const MAX_SHAKE_OFFSET: f32 = 18.0;
+pub const SHAKE_DECAY: f32 = 1.5;
+pub const SHAKE_HIT: f32 = 0.6;
+pub const SHAKE_EXPLOSION: f32 = 0.25;
+pub const SHAKE_SPECIAL: f32 = 0.5;
