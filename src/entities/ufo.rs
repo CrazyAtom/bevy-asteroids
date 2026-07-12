@@ -64,6 +64,11 @@ fn ufo_spawn_system(
     wave: Res<crate::core::state::Wave>,
     mut timer: ResMut<UfoSpawnTimer>,
 ) {
+    // 웨이브1은 UFO 없이 소행성만(초반 학습 구간). 틱 전에 반환해 타이머를
+    // 얼려두면, 웨이브2 진입 후 온전한 12초 뒤 첫 UFO가 등장한다.
+    if !crate::core::logic::ufo_active_for_wave(wave.0) {
+        return;
+    }
     timer.0.tick(time.delta());
     if !timer.0.is_finished() {
         return;
