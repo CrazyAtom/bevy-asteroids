@@ -1,12 +1,10 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::components::{Collider, Velocity, Wrapping};
-use crate::config::{
-    ASTEROID_MAX_SPEED, ASTEROID_MIN_SPEED, HALF_HEIGHT, HALF_WIDTH, INITIAL_ASTEROIDS,
-};
-use crate::logic::AsteroidSize;
-use crate::state::{GameState, GameplayEntity};
+use crate::components::{AngularVelocity, Collider, Velocity, Wrapping};
+use crate::config::{ASTEROID_MAX_SPEED, ASTEROID_MIN_SPEED, ASTEROID_SPIN_MAX, HALF_HEIGHT, HALF_WIDTH};
+use crate::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
+use crate::state::{GameState, GameplayEntity, Wave};
 
 #[derive(Component)]
 pub struct Asteroid {
@@ -51,11 +49,14 @@ pub fn spawn_asteroid(
     position: Vec2,
     velocity: Vec2,
 ) {
+    let mut rng = rand::rng();
+    let spin = rng.random_range(-ASTEROID_SPIN_MAX..ASTEROID_SPIN_MAX);
     commands.spawn((
         Asteroid { size },
         AsteroidShape { points: asteroid_shape(size.radius()) },
         Transform::from_translation(position.extend(0.0)),
         Velocity(velocity),
+        AngularVelocity(spin),
         Collider { radius: size.radius() },
         Wrapping,
         GameplayEntity,
@@ -76,31 +77,30 @@ fn random_spawn_position() -> Vec2 {
     }
 }
 
-fn random_velocity() -> Vec2 {
+pub fn random_velocity(size: AsteroidSize) -> Vec2 {
     let mut rng = rand::rng();
     let angle = rng.random_range(0.0..std::f32::consts::TAU);
-    let speed = rng.random_range(ASTEROID_MIN_SPEED..ASTEROID_MAX_SPEED);
+    let speed = rng.random_range(ASTEROID_MIN_SPEED..ASTEROID_MAX_SPEED) * size.speed_scale();
     Vec2::new(angle.cos(), angle.sin()) * speed
 }
 
-fn spawn_wave(commands: &mut Commands) {
-    for _ in 0..INITIAL_ASTEROIDS {
-        spawn_asteroid(
-            commands,
-            AsteroidSize::Large,
-            random_spawn_position(),
-            random_velocity(),
-        );
+fn spawn_wave(commands: &mut Commands, wave: u32) {
+    let count = asteroid_count_for_wave(wave);
+    let scale = asteroid_speed_scale_for_wave(wave);
+    for _ in 0..count {
+        let base = random_velocity(AsteroidSize::Large);
+        spawn_asteroid(commands, AsteroidSize::Large, random_spawn_position(), base * scale);
     }
 }
 
-fn spawn_initial_wave(mut commands: Commands) {
-    spawn_wave(&mut commands);
+fn spawn_initial_wave(mut commands: Commands, wave: Res<Wave>) {
+    spawn_wave(&mut commands, wave.0);
 }
 
-fn wave_control(mut commands: Commands, asteroids: Query<(), With<Asteroid>>) {
+fn wave_control(mut commands: Commands, mut wave: ResMut<Wave>, asteroids: Query<(), With<Asteroid>>) {
     if asteroids.iter().count() == 0 {
-        spawn_wave(&mut commands);
+        wave.0 += 1;
+        spawn_wave(&mut commands, wave.0);
     }
 }
 

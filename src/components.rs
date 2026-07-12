@@ -4,6 +4,9 @@ use bevy::prelude::*;
 pub struct Velocity(pub Vec2);
 
 #[derive(Component, Clone, Copy)]
+pub struct AngularVelocity(pub f32);
+
+#[derive(Component, Clone, Copy)]
 pub struct Collider {
     pub radius: f32,
 }
