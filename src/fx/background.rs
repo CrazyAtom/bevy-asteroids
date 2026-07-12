@@ -1,14 +1,14 @@
 use bevy::prelude::*;
 
 use crate::core::config::{WINDOW_HEIGHT, WINDOW_WIDTH, Z_BACKGROUND};
-use crate::fx::sprites::{load_sprite_assets, SpriteAssets};
+use crate::fx::sprites::SpriteAssets;
 
 pub struct BackgroundPlugin;
 
 impl Plugin for BackgroundPlugin {
     fn build(&self, app: &mut App) {
-        // SpriteAssets가 먼저 삽입된 뒤 배경을 스폰한다.
-        app.add_systems(Startup, spawn_background.after(load_sprite_assets));
+        // SpriteAssets는 PreStartup에서 로드되므로 Startup 시점엔 이미 존재한다.
+        app.add_systems(Startup, spawn_background);
     }
 }
 

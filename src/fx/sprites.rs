@@ -31,15 +31,19 @@ pub struct SpritesPlugin;
 
 impl Plugin for SpritesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, load_sprite_assets);
+        // AssetServer는 DefaultPlugins(AssetPlugin)에서 이미 삽입됨. 빌드 시점에
+        // 핸들을 로드해 리소스로 즉시 넣으면, 어떤 스케줄(Startup·OnEnter·Update)
+        // 보다도 먼저 존재가 보장되어 리소스 순서 문제가 원천 차단된다.
+        let asset_server = app.world().resource::<AssetServer>().clone();
+        app.insert_resource(build_sprite_assets(&asset_server));
     }
 }
 
-pub(crate) fn load_sprite_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn build_sprite_assets(asset_server: &AssetServer) -> SpriteAssets {
     let explosion_frames: Vec<Handle<Image>> = (0..EXPLOSION_FRAME_COUNT)
         .map(|i| asset_server.load(format!("sprites/explosion_{i}.png")))
         .collect();
-    commands.insert_resource(SpriteAssets {
+    SpriteAssets {
         ship: asset_server.load("sprites/ship.png"),
         flame: asset_server.load("sprites/flame.png"),
         meteor_large: asset_server.load("sprites/meteor_large.png"),
@@ -61,7 +65,7 @@ pub(crate) fn load_sprite_assets(mut commands: Commands, asset_server: Res<Asset
             asset_server.load("sprites/powerup_special.png"),
         ],
         explosion_frames,
-    });
+    }
 }
 
 /// 테스트에서 `SpriteAssets`가 필요한 스폰 시스템을 돌릴 때 쓰는 더미 리소스.
