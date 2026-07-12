@@ -1,5 +1,3 @@
-use bevy::prelude::Color;
-
 pub const WINDOW_WIDTH: f32 = 1280.0;
 pub const WINDOW_HEIGHT: f32 = 720.0;
 pub const HALF_WIDTH: f32 = WINDOW_WIDTH / 2.0;
@@ -13,8 +11,6 @@ pub const SHIP_DAMPING: f32 = 0.985;
 // 우주선 최고 속도 상한(units/s).
 pub const SHIP_MAX_SPEED: f32 = 450.0;
 pub const SHIP_BRAKE_RATE: f32 = 3.0; // 브레이크 감쇠율(1/s)
-pub const SHIP_COLOR: Color = Color::srgb(0.40, 0.90, 1.00); // 청록
-pub const FLAME_COLOR: Color = Color::srgb(1.00, 0.55, 0.15); // 주황
 
 pub const BULLET_SPEED: f32 = 620.0;
 pub const BULLET_LIFETIME_SECS: f32 = 1.2;
@@ -43,10 +39,6 @@ pub const UFO_SMALL_RADIUS: f32 = 12.0;
 pub const UFO_FIRE_INTERVAL_SECS: f32 = 1.4;
 pub const UFO_SPAWN_INTERVAL_BASE: f32 = 12.0;
 pub const UFO_SPAWN_INTERVAL_MIN: f32 = 5.0;
-
-// Phase 3 — 배경
-pub const STAR_COUNT: usize = 120;
-pub const TWINKLE_SPEED: f32 = 2.0;
 
 // Phase 3 — 화면 흔들림
 pub const MAX_SHAKE_OFFSET: f32 = 18.0;
