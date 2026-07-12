@@ -3,6 +3,7 @@ use bevy::text::FontSize;
 use bevy_persistent::prelude::*;
 
 use crate::core::state::{GameState, GameplayEntity, HighScore, Lives, Score, Wave};
+use crate::entities::player::{Player, RapidFire, Shield, Spread, SpecialWeapon};
 
 #[derive(Component)]
 struct Hud;
@@ -53,12 +54,23 @@ fn update_hud(
     lives: Res<Lives>,
     high: Res<Persistent<HighScore>>,
     wave: Res<Wave>,
+    player: Query<(Option<&SpecialWeapon>, Option<&Shield>, Option<&RapidFire>, Option<&Spread>), With<Player>>,
     mut query: Query<&mut Text, With<Hud>>,
 ) {
+    let (charges, mods) = if let Ok((sw, sh, rf, sp)) = player.single() {
+        let charges = sw.map(|w| w.charges).unwrap_or(0);
+        let mut mods = String::new();
+        if sh.is_some() { mods.push_str(" [실드]"); }
+        if rf.is_some() { mods.push_str(" [연사]"); }
+        if sp.is_some() { mods.push_str(" [확산]"); }
+        (charges, mods)
+    } else {
+        (0, String::new())
+    };
     for mut text in &mut query {
         text.0 = format!(
-            "Score: {}   Lives: {}   Wave: {}   High: {}",
-            score.0, lives.0, wave.0, high.0
+            "Score: {}   Lives: {}   Wave: {}   High: {}   특수: {}{}",
+            score.0, lives.0, wave.0, high.0, charges, mods
         );
     }
 }
