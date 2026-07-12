@@ -124,9 +124,15 @@ fn beam_vs_targets(
     asteroids: Query<(Entity, &Transform, &Collider, &Asteroid)>,
     ufos: Query<(Entity, &Transform, &Collider, &Ufo)>,
 ) {
+    let mut destroyed: HashSet<Entity> = HashSet::new();
+
     for beam in &beams {
         for (e, tf, col, asteroid) in &asteroids {
+            if destroyed.contains(&e) {
+                continue;
+            }
             if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
+                destroyed.insert(e);
                 commands.entity(e).despawn();
                 score.0 += asteroid.size.score();
                 spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
@@ -134,7 +140,11 @@ fn beam_vs_targets(
             }
         }
         for (e, tf, col, ufo) in &ufos {
+            if destroyed.contains(&e) {
+                continue;
+            }
             if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
+                destroyed.insert(e);
                 commands.entity(e).despawn();
                 score.0 += ufo.size.score();
                 spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
@@ -361,6 +371,34 @@ mod tests {
         assert!(app.world().get_entity(bullet).is_err());
         assert_eq!(app.world().resource::<Score>().0, 1000);
         let mut q = app.world_mut().query::<&Ufo>();
+        assert_eq!(q.iter(app.world()).count(), 0);
+    }
+
+    #[test]
+    fn two_overlapping_beams_score_target_once() {
+        let mut app = App::new();
+        app.add_message::<SfxEvent>();
+        app.insert_resource(Score(0));
+        app.world_mut().spawn(SpecialBeam {
+            life: Timer::from_seconds(0.4, TimerMode::Once),
+            origin: Vec2::ZERO,
+            dir: Vec2::Y,
+        });
+        app.world_mut().spawn(SpecialBeam {
+            life: Timer::from_seconds(0.4, TimerMode::Once),
+            origin: Vec2::ZERO,
+            dir: Vec2::Y,
+        });
+        app.world_mut().spawn((
+            Asteroid { size: AsteroidSize::Large },
+            Transform::from_xyz(0.0, 100.0, 0.0),
+            Collider { radius: AsteroidSize::Large.radius() },
+        ));
+
+        app.world_mut().run_system_once(beam_vs_targets).unwrap();
+
+        assert_eq!(app.world().resource::<Score>().0, AsteroidSize::Large.score());
+        let mut q = app.world_mut().query::<&Asteroid>();
         assert_eq!(q.iter(app.world()).count(), 0);
     }
 
