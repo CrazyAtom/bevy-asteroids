@@ -47,7 +47,11 @@ pub fn spawn_enemy_bullet(
             custom_size: Some(Vec2::new(6.0, 14.0)),
             ..default()
         },
-        Transform::from_translation(position.extend(Z_ENTITY)),
+        Transform {
+            translation: position.extend(Z_ENTITY),
+            rotation: Quat::from_rotation_z(velocity.y.atan2(velocity.x) - std::f32::consts::FRAC_PI_2),
+            ..default()
+        },
         Velocity(velocity),
         Collider { radius: ENEMY_BULLET_COLLIDER_RADIUS },
         GameplayEntity,
@@ -97,7 +101,11 @@ fn fire_bullet(
                 custom_size: Some(Vec2::new(6.0, 14.0)),
                 ..default()
             },
-            Transform::from_translation(nose),
+            Transform {
+                translation: nose,
+                rotation: Quat::from_rotation_z(dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2),
+                ..default()
+            },
             Velocity(dir * BULLET_SPEED),
             Collider { radius: BULLET_COLLIDER_RADIUS },
             Wrapping,
