@@ -1,6 +1,10 @@
 use bevy::prelude::*;
 
 use crate::core::config::{CYCLE_LEN, WAVES_PER_STAGE};
+use crate::core::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
+use crate::core::state::GameState;
+use crate::entities::asteroid::{random_spawn_position, random_velocity, spawn_asteroid, Asteroid};
+use crate::fx::sprites::SpriteAssets;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ThemeId {
@@ -89,9 +93,86 @@ pub fn theme_params(t: ThemeId) -> ThemeParams {
     }
 }
 
+pub fn themed_wave_count(theme: ThemeId, wave_no: u32) -> usize {
+    let base = asteroid_count_for_wave(wave_no) as f32;
+    (base * theme_params(theme).count_mul).round().max(1.0) as usize
+}
+
+pub fn themed_speed_scale(theme: ThemeId, wave_no: u32) -> f32 {
+    asteroid_speed_scale_for_wave(wave_no) * theme_params(theme).speed_mul
+}
+
+pub fn theme_name(t: ThemeId) -> &'static str {
+    match t {
+        ThemeId::AsteroidBelt => "소행성대",
+        ThemeId::AlienFleet => "외계 함대",
+        ThemeId::SolarFlare => "화염지대",
+    }
+}
+
+pub struct StagePlugin;
+
+impl Plugin for StagePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            OnEnter(GameState::Playing),
+            start_first_stage.after(crate::core::state::reset_game),
+        )
+        .add_systems(Update, stage_control.run_if(in_state(GameState::Playing)));
+    }
+}
+
+/// 현재 스테이지 테마/난이도로 소행성 한 웨이브를 스폰한다.
+pub fn spawn_first_wave_of_stage(commands: &mut Commands, assets: &SpriteAssets, prog: &Progression) {
+    let theme = prog.current_theme();
+    let wave_no = stage_wave_number(prog);
+    let count = themed_wave_count(theme, wave_no);
+    let scale = themed_speed_scale(theme, wave_no);
+    for _ in 0..count {
+        let base = random_velocity(AsteroidSize::Large);
+        spawn_asteroid(commands, assets, AsteroidSize::Large, random_spawn_position(), base * scale);
+    }
+}
+
+fn start_first_stage(mut commands: Commands, assets: Res<SpriteAssets>, prog: Res<Progression>) {
+    spawn_first_wave_of_stage(&mut commands, &assets, &prog);
+}
+
+/// Waves 단계: 소행성 전멸 시 다음 웨이브 스폰 또는 보스 전환.
+/// (Task 3 시점: 보스 대신 임시로 즉시 다음 스테이지. Task 4에서 보스 스폰으로 교체.)
+fn stage_control(
+    mut commands: Commands,
+    assets: Res<SpriteAssets>,
+    mut prog: ResMut<Progression>,
+    asteroids: Query<(), With<Asteroid>>,
+) {
+    if prog.phase != StagePhase::Waves {
+        return;
+    }
+    if asteroids.iter().count() != 0 {
+        return;
+    }
+    prog.wave_in_stage += 1;
+    if prog.wave_in_stage < WAVES_PER_STAGE {
+        spawn_first_wave_of_stage(&mut commands, &assets, &prog);
+    } else {
+        prog.phase = StagePhase::Boss;
+        advance_stage(&mut prog);
+        spawn_first_wave_of_stage(&mut commands, &assets, &prog);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn themed_scaling_applies_multiplier() {
+        let belt = themed_wave_count(ThemeId::AsteroidBelt, 1);
+        let fleet = themed_wave_count(ThemeId::AlienFleet, 1);
+        assert!(belt >= fleet); // belt count_mul 1.3
+        assert!(themed_speed_scale(ThemeId::SolarFlare, 1) > themed_speed_scale(ThemeId::AlienFleet, 1));
+    }
 
     #[test]
     fn cycle_order_is_distinct_subset() {

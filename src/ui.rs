@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use bevy::text::FontSize;
 use bevy_persistent::prelude::*;
 
-use crate::core::state::{GameState, GameplayEntity, HighScore, Lives, Score, Wave};
+use crate::core::state::{GameState, GameplayEntity, HighScore, Lives, Score};
 use crate::entities::player::{Player, RapidFire, Shield, Spread, SpecialWeapon};
+use crate::systems::stage::{theme_name, Progression};
 
 #[derive(Component)]
 struct Hud;
@@ -24,7 +25,7 @@ impl Plugin for UiPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_hud)
             .add_systems(
                 Update,
-                (update_hud, announce_wave, wave_banner_lifetime)
+                (update_hud, announce_stage, wave_banner_lifetime)
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnEnter(GameState::GameOver), spawn_game_over)
@@ -54,7 +55,7 @@ fn update_hud(
     score: Res<Score>,
     lives: Res<Lives>,
     high: Res<Persistent<HighScore>>,
-    wave: Res<Wave>,
+    prog: Res<Progression>,
     player: Query<(Option<&SpecialWeapon>, Option<&Shield>, Option<&RapidFire>, Option<&Spread>), With<Player>>,
     mut query: Query<&mut Text, With<Hud>>,
 ) {
@@ -70,31 +71,43 @@ fn update_hud(
     };
     for mut text in &mut query {
         text.0 = format!(
-            "Score: {}   Lives: {}   Wave: {}   High: {}   특수: {}{}",
-            score.0, lives.0, wave.0, high.0, charges, mods
+            "Score: {}   Lives: {}   Stage {}-{}   High: {}   특수: {}{}",
+            score.0, lives.0, prog.cycle + 1, prog.stage_in_cycle + 1, high.0, charges, mods
         );
     }
 }
 
-/// `Wave` 리소스가 바뀌면(시작·리셋·웨이브 상승) 화면 중앙에 "WAVE N" 배너를 스폰한다.
-fn announce_wave(mut commands: Commands, wave: Res<Wave>, existing: Query<Entity, With<WaveBanner>>) {
-    if !wave.is_changed() {
+/// 스테이지(사이클·순번)가 바뀌면 "STAGE c-s 테마명" 배너를 잠깐 띄운다.
+fn announce_stage(
+    mut commands: Commands,
+    prog: Res<Progression>,
+    mut last: Local<Option<(u32, usize)>>,
+    existing: Query<Entity, With<WaveBanner>>,
+) {
+    let key = (prog.cycle, prog.stage_in_cycle);
+    if *last == Some(key) {
         return;
     }
+    *last = Some(key);
     // 이전 배너가 남아 있으면 제거해 중첩 방지
     for entity in &existing {
         commands.entity(entity).despawn();
     }
     commands.spawn((
-        WaveBanner { life: Timer::from_seconds(1.5, TimerMode::Once) },
+        WaveBanner { life: Timer::from_seconds(1.8, TimerMode::Once) },
         GameplayEntity,
-        Text::new(format!("WAVE {}", wave.0)),
-        TextFont { font_size: FontSize::Px(48.0), ..default() },
+        Text::new(format!(
+            "STAGE {}-{}  {}",
+            prog.cycle + 1,
+            prog.stage_in_cycle + 1,
+            theme_name(prog.current_theme())
+        )),
+        TextFont { font_size: FontSize::Px(44.0), ..default() },
         TextColor(Color::srgb(0.4, 0.9, 1.0)),
         Node {
             position_type: PositionType::Absolute,
             top: Val::Percent(30.0),
-            left: Val::Percent(42.0),
+            left: Val::Percent(32.0),
             ..default()
         },
     ));
@@ -154,7 +167,7 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(Score(150));
         app.insert_resource(Lives(2));
-        app.insert_resource(Wave(3));
+        app.insert_resource(crate::systems::stage::new_progression());
         let hs = Persistent::<HighScore>::builder()
             .name("test high score")
             .format(StorageFormat::Json)
@@ -168,7 +181,7 @@ mod tests {
         let text = app.world().entity(e).get::<Text>().unwrap();
         assert!(text.0.contains("150"));
         assert!(text.0.contains("Lives: 2"));
-        assert!(text.0.contains("Wave: 3"));
+        assert!(text.0.contains("Stage 1-1"));
         assert!(text.0.contains("High: 0"));
     }
 

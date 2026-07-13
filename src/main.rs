@@ -34,7 +34,7 @@ fn main() {
         .add_plugins(core::state::GameStatePlugin)
         .add_plugins(entities::player::PlayerPlugin)
         .add_plugins(entities::bullet::BulletPlugin)
-        .add_plugins(entities::asteroid::AsteroidPlugin)
+        .add_plugins(systems::stage::StagePlugin)
         .add_plugins(systems::collision::CollisionPlugin)
         .add_plugins(fx::effects::EffectsPlugin)
         .add_plugins(fx::background::BackgroundPlugin)
