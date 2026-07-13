@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use crate::core::config::{CYCLE_LEN, WAVES_PER_STAGE};
+use crate::core::config::{CYCLE_LEN, STARTING_LIVES, WAVES_PER_STAGE};
 use crate::core::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
-use crate::core::state::GameState;
+use crate::core::state::{GameState, Lives};
 use crate::entities::asteroid::{random_spawn_position, random_velocity, spawn_asteroid, Asteroid};
 use crate::fx::sprites::SpriteAssets;
 
@@ -148,6 +148,7 @@ fn stage_control(
     mut commands: Commands,
     assets: Res<SpriteAssets>,
     mut prog: ResMut<Progression>,
+    mut lives: ResMut<Lives>,
     asteroids: Query<(), With<Asteroid>>,
 ) {
     if prog.phase != StagePhase::Waves {
@@ -158,6 +159,8 @@ fn stage_control(
     }
     prog.wave_in_stage += 1;
     if prog.wave_in_stage < WAVES_PER_STAGE {
+        // 다음 웨이브 진입 시 목숨을 기본치 이상으로 리필(기본 이상이면 유지).
+        lives.0 = lives.0.max(STARTING_LIVES);
         spawn_first_wave_of_stage(&mut commands, &assets, &prog);
     } else {
         // 웨이브 전멸 상태에서 진입하므로 잔여 소행성은 없다. 보스 스폰.

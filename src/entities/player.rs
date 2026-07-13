@@ -35,7 +35,10 @@ pub struct Shield(pub Timer);
 pub struct RapidFire(pub Timer);
 
 #[derive(Component)]
-pub struct Spread(pub Timer);
+pub struct Spread {
+    pub timer: Timer,
+    pub level: u8, // 1..=SPREAD_MAX_LEVEL. 동시 발사 수 = level * 3
+}
 
 #[derive(Component)]
 pub struct HyperspaceCooldown(pub Timer);
@@ -245,8 +248,8 @@ fn tick_fire_mods(
         }
     }
     for (e, mut t) in &mut spread {
-        t.0.tick(time.delta());
-        if t.0.is_finished() {
+        t.timer.tick(time.delta());
+        if t.timer.is_finished() {
             commands.entity(e).remove::<Spread>();
         }
     }
@@ -262,7 +265,7 @@ fn update_shield_sprite(
     let visible = match shield {
         None => false,
         // 만료 0.6초 전부터 깜빡여 보호가 끝나감을 알린다.
-        Some(s) if s.0.remaining_secs() < 0.6 => (time.elapsed_secs() * 14.0).sin() > 0.0,
+        Some(s) if s.0.remaining_secs() < 1.0 => (time.elapsed_secs() * 10.0).sin() > 0.0,
         Some(_) => true,
     };
     for mut vis in &mut shield_q {

@@ -7,7 +7,8 @@ use crate::core::config::{
     Z_ENTITY,
 };
 use crate::core::logic::{aim_direction, circles_overlap, segment_circle_hit, AsteroidSize};
-use crate::core::state::{GameState, GameplayEntity, Score};
+use crate::core::config::STARTING_LIVES;
+use crate::core::state::{GameState, GameplayEntity, Lives, Score};
 use crate::entities::asteroid::{random_velocity, spawn_asteroid};
 use crate::entities::bullet::{spawn_enemy_bullet, Bullet};
 use crate::entities::player::{Player, SpecialBeam};
@@ -194,6 +195,7 @@ fn boss_combat(
     mut commands: Commands,
     assets: Res<SpriteAssets>,
     mut score: ResMut<Score>,
+    mut lives: ResMut<Lives>,
     mut prog: ResMut<Progression>,
     mut shake: MessageWriter<ShakeEvent>,
     mut sfx: MessageWriter<SfxEvent>,
@@ -233,6 +235,8 @@ fn boss_combat(
             sfx.write(SfxEvent(Sfx::Explosion));
             score.0 += BOSS_SCORE_BONUS;
             advance_stage(&mut prog);
+            // 다음 스테이지 진입 시 목숨을 기본치 이상으로 리필.
+            lives.0 = lives.0.max(STARTING_LIVES);
             spawn_first_wave_of_stage(&mut commands, &assets, &prog);
         }
     }

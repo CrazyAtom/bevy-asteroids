@@ -4,7 +4,7 @@ use rand::RngExt;
 use crate::core::components::{Collider, Velocity};
 use crate::core::config::{
     POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_MAGNET_RANGE, POWERUP_MAGNET_SPEED,
-    POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS, SPREAD_SECS, Z_ENTITY,
+    POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS, SPREAD_MAX_LEVEL, SPREAD_SECS, Z_ENTITY,
 };
 use crate::core::state::{GameState, GameplayEntity, Lives};
 use crate::entities::player::{Player, RapidFire, Shield, SpecialWeapon, Spread};
@@ -135,6 +135,7 @@ fn collect_powerup(
     players: Query<(Entity, &Transform, &Collider), With<Player>>,
     powerups: Query<(Entity, &Transform, &Collider, &Powerup)>,
     mut special_q: Query<&mut SpecialWeapon>,
+    spread_q: Query<&Spread>,
 ) {
     let Ok((player_entity, player_tf, player_col)) = players.single() else {
         return;
@@ -159,9 +160,15 @@ fn collect_powerup(
                     ));
                 }
                 PowerupKind::Spread => {
-                    commands
-                        .entity(player_entity)
-                        .insert(Spread(Timer::from_seconds(SPREAD_SECS, TimerMode::Once)));
+                    // 재획득 시 레벨+1(최대 SPREAD_MAX_LEVEL), 시간은 매번 리셋.
+                    let level = spread_q
+                        .get(player_entity)
+                        .map(|s| (s.level + 1).min(SPREAD_MAX_LEVEL))
+                        .unwrap_or(1);
+                    commands.entity(player_entity).insert(Spread {
+                        timer: Timer::from_seconds(SPREAD_SECS, TimerMode::Once),
+                        level,
+                    });
                 }
                 PowerupKind::SpecialWeapon(kind) => {
                     if let Ok(mut weapon) = special_q.get_mut(player_entity) {

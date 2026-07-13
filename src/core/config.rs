@@ -4,7 +4,7 @@ pub const HALF_WIDTH: f32 = WINDOW_WIDTH / 2.0;
 pub const HALF_HEIGHT: f32 = WINDOW_HEIGHT / 2.0;
 
 pub const SHIP_ROTATION_SPEED: f32 = 4.0; // rad/s (회전 각속도 상한)
-pub const SHIP_TURN_MIN: f32 = 0.8;       // 회전 시작 각속도(미세 조준용, rad/s)
+pub const SHIP_TURN_MIN: f32 = 1.2;       // 회전 시작 각속도(미세 조준용, rad/s)
 pub const SHIP_TURN_ACCEL: f32 = 8.0;     // 누르는 동안 각속도 가속(rad/s^2)
 pub const SHIP_THRUST: f32 = 320.0;       // units/s^2
 pub const SHIP_COLLIDER_RADIUS: f32 = 12.0;
@@ -23,7 +23,7 @@ pub const UFO_BULLET_LIFETIME_SECS: f32 = 2.5;
 pub const UFO_BULLET_SPEED: f32 = 320.0;
 
 pub const STARTING_LIVES: u32 = 3;
-pub const SPAWN_INVINCIBILITY_SECS: f32 = 2.0; // (재)스폰 직후 일시 무적(즉사 연쇄 방지)
+pub const SPAWN_INVINCIBILITY_SECS: f32 = 3.0; // (재)스폰 직후 일시 무적(즉사 연쇄 방지)
 
 pub const BASE_ASTEROIDS: usize = 4;
 pub const MAX_ASTEROIDS: usize = 10;
@@ -56,6 +56,7 @@ pub const RAPID_FIRE_INTERVAL: f32 = 0.10;
 pub const SPREAD_ANGLE: f32 = 0.26; // rad
 pub const RAPID_FIRE_SECS: f32 = 6.0;
 pub const SPREAD_SECS: f32 = 6.0;
+pub const SPREAD_MAX_LEVEL: u8 = 3; // 확산탄 최대 레벨(발사 수 = level*3 → 최대 9발)
 
 // Phase 3 — 파워업
 pub const POWERUP_DROP_CHANCE: f32 = 0.18;
@@ -64,7 +65,7 @@ pub const POWERUP_DRIFT_SPEED: f32 = 30.0;
 pub const POWERUP_RADIUS: f32 = 12.0;
 pub const POWERUP_MAGNET_RANGE: f32 = 100.0; // 이 거리 안이면 파워업이 플레이어로 끌려옴
 pub const POWERUP_MAGNET_SPEED: f32 = 320.0; // 끌려오는 속도(u/s)
-pub const SHIELD_SECS: f32 = 5.0;
+pub const SHIELD_SECS: f32 = 7.0;
 
 // Phase 3 — 특수무기
 pub const STARTING_SPECIAL_CHARGES: u32 = 1; // 게임 시작 시 보유한 특수무기 충전 수
