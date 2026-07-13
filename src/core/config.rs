@@ -84,3 +84,7 @@ pub const Z_PARTICLE: f32 = 12.0;
 pub const Z_EXPLOSION: f32 = 15.0;
 pub const EXPLOSION_FRAME_COUNT: usize = 6;
 pub const EXPLOSION_FRAME_SECS: f32 = 0.06;
+
+// Phase 5 — 스테이지/보스
+pub const CYCLE_LEN: usize = 3;     // 한 사이클의 스테이지 수(= 무작위로 뽑을 테마 수)
+pub const WAVES_PER_STAGE: u32 = 3; // 스테이지당 보스 전 웨이브 수
