@@ -3,8 +3,8 @@ use rand::RngExt;
 
 use crate::core::components::{Collider, Velocity};
 use crate::core::config::{
-    POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS,
-    SPREAD_SECS, Z_ENTITY,
+    POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_MAGNET_RANGE, POWERUP_MAGNET_SPEED,
+    POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS, SPREAD_SECS, Z_ENTITY,
 };
 use crate::core::state::{GameState, GameplayEntity, Lives};
 use crate::entities::player::{Player, RapidFire, Shield, SpecialWeapon, Spread};
@@ -37,7 +37,8 @@ impl Plugin for PowerupPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (powerup_lifetime, collect_powerup).run_if(in_state(GameState::Playing)),
+            (powerup_lifetime, attract_powerups, collect_powerup)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -92,6 +93,36 @@ fn powerup_lifetime(mut commands: Commands, time: Res<Time>, mut q: Query<(Entit
         p.life.tick(time.delta());
         if p.life.is_finished() {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+/// 파워업이 자석 범위 안이면 플레이어를 향하는 속도를, 아니면 None을 반환.
+pub fn magnet_velocity(powerup_pos: Vec2, player_pos: Vec2, range: f32, speed: f32) -> Option<Vec2> {
+    let to_player = player_pos - powerup_pos;
+    let dist = to_player.length();
+    if dist < range && dist > 0.01 {
+        Some(to_player / dist * speed)
+    } else {
+        None
+    }
+}
+
+/// 자석 범위 안의 파워업 속도를 플레이어 방향으로 덮어써 끌어당긴다.
+fn attract_powerups(
+    players: Query<&Transform, With<Player>>,
+    mut powerups: Query<(&Transform, &mut Velocity), With<Powerup>>,
+) {
+    let Ok(player_tf) = players.single() else { return };
+    let ppos = player_tf.translation.truncate();
+    for (tf, mut vel) in &mut powerups {
+        if let Some(v) = magnet_velocity(
+            tf.translation.truncate(),
+            ppos,
+            POWERUP_MAGNET_RANGE,
+            POWERUP_MAGNET_SPEED,
+        ) {
+            vel.0 = v;
         }
     }
 }
@@ -169,6 +200,16 @@ mod tests {
         assert_eq!(powerup_sprite_index(Spread), 2);
         assert_eq!(powerup_sprite_index(ExtraLife), 3);
         assert_eq!(powerup_sprite_index(SpecialWeapon(SpecialWeaponKind::LaserBeam)), 4);
+    }
+
+    #[test]
+    fn magnet_pulls_only_within_range() {
+        // 범위 밖 → None
+        assert!(magnet_velocity(Vec2::ZERO, Vec2::new(500.0, 0.0), 140.0, 320.0).is_none());
+        // 범위 안 → 플레이어 방향 단위벡터 * speed
+        let v = magnet_velocity(Vec2::ZERO, Vec2::new(100.0, 0.0), 140.0, 320.0).unwrap();
+        assert!((v.x - 320.0).abs() < 1e-3);
+        assert!(v.y.abs() < 1e-3);
     }
 
     #[test]
