@@ -156,9 +156,10 @@ fn stage_control(
     if prog.wave_in_stage < WAVES_PER_STAGE {
         spawn_first_wave_of_stage(&mut commands, &assets, &prog);
     } else {
+        // 웨이브 전멸 상태에서 진입하므로 잔여 소행성은 없다. 보스 스폰.
         prog.phase = StagePhase::Boss;
-        advance_stage(&mut prog);
-        spawn_first_wave_of_stage(&mut commands, &assets, &prog);
+        let kind = crate::entities::boss::boss_for_theme(prog.current_theme());
+        crate::entities::boss::spawn_boss(&mut commands, &assets, kind, prog.cycle);
     }
 }
 
