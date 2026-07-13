@@ -25,7 +25,7 @@ pub const UFO_BULLET_SPEED: f32 = 320.0;
 pub const STARTING_LIVES: u32 = 3;
 pub const SPAWN_INVINCIBILITY_SECS: f32 = 3.0; // (재)스폰 직후 일시 무적(즉사 연쇄 방지)
 
-pub const BASE_ASTEROIDS: usize = 4;
+pub const BASE_ASTEROIDS: usize = 3;
 pub const MAX_ASTEROIDS: usize = 10;
 pub const ASTEROID_MIN_SPEED: f32 = 40.0;
 pub const ASTEROID_MAX_SPEED: f32 = 120.0;
@@ -93,6 +93,6 @@ pub const CYCLE_LEN: usize = 3;     // 한 사이클의 스테이지 수(= 무�
 pub const WAVES_PER_STAGE: u32 = 3; // 스테이지당 보스 전 웨이브 수
 pub const BULLET_BOSS_DAMAGE: f32 = 1.0;
 pub const BEAM_BOSS_DAMAGE: f32 = 4.0;
-pub const BOSS_BASE_HEALTH: f32 = 40.0;      // 기준 체력
-pub const BOSS_HEALTH_PER_CYCLE: f32 = 20.0; // 사이클마다 증가
+pub const BOSS_BASE_HEALTH: f32 = 30.0;      // 기준 체력
+pub const BOSS_HEALTH_PER_CYCLE: f32 = 14.0; // 사이클마다 증가
 pub const BOSS_SCORE_BONUS: u32 = 2000;      // 격파 보너스

@@ -87,7 +87,7 @@ pub fn asteroid_count_for_wave(wave: u32) -> usize {
 }
 
 pub fn asteroid_speed_scale_for_wave(wave: u32) -> f32 {
-    (1.0 + difficulty_index(wave) as f32 * 0.08).min(2.0)
+    (1.0 + difficulty_index(wave) as f32 * 0.065).min(2.0)
 }
 
 pub fn ufo_interval_for_wave(wave: u32) -> f32 {
@@ -216,8 +216,8 @@ mod tests {
     #[test]
     fn wave_scaling_formulas() {
         // 웨이브1 = 기준선(지수 0): 기본4개, 상한10
-        assert_eq!(asteroid_count_for_wave(1), 4);
-        assert_eq!(asteroid_count_for_wave(4), 7); // 웨이브4 → 지수3 → 4+3
+        assert_eq!(asteroid_count_for_wave(1), 3);
+        assert_eq!(asteroid_count_for_wave(4), 6); // 웨이브4 → 지수3 → 3+3
         assert_eq!(asteroid_count_for_wave(50), 10); // 상한
         // 속도 배수: 웨이브↑ → 증가, 웨이브1은 정확히 1.0
         assert!(asteroid_speed_scale_for_wave(6) > asteroid_speed_scale_for_wave(1));

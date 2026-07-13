@@ -91,9 +91,9 @@ pub struct ThemeParams {
 
 pub fn theme_params(t: ThemeId) -> ThemeParams {
     match t {
-        ThemeId::AsteroidBelt => ThemeParams { count_mul: 1.3, speed_mul: 1.0, ufo_interval_mul: 1.0 },
-        ThemeId::AlienFleet => ThemeParams { count_mul: 1.0, speed_mul: 1.0, ufo_interval_mul: 0.6 },
-        ThemeId::SolarFlare => ThemeParams { count_mul: 1.0, speed_mul: 1.4, ufo_interval_mul: 1.0 },
+        ThemeId::AsteroidBelt => ThemeParams { count_mul: 1.15, speed_mul: 1.0, ufo_interval_mul: 1.0 },
+        ThemeId::AlienFleet => ThemeParams { count_mul: 1.0, speed_mul: 1.0, ufo_interval_mul: 0.8 },
+        ThemeId::SolarFlare => ThemeParams { count_mul: 1.0, speed_mul: 1.2, ufo_interval_mul: 1.0 },
     }
 }
 
@@ -108,9 +108,9 @@ pub fn themed_speed_scale(theme: ThemeId, wave_no: u32) -> f32 {
 
 pub fn theme_name(t: ThemeId) -> &'static str {
     match t {
-        ThemeId::AsteroidBelt => "소행성대",
-        ThemeId::AlienFleet => "외계 함대",
-        ThemeId::SolarFlare => "화염지대",
+        ThemeId::AsteroidBelt => "ASTEROID BELT",
+        ThemeId::AlienFleet => "ALIEN FLEET",
+        ThemeId::SolarFlare => "SOLAR FLARE",
     }
 }
 

@@ -93,9 +93,9 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
 /// 보스 종류별 공격 주기(초).
 fn attack_interval(kind: BossKind) -> f32 {
     match kind {
-        BossKind::MotherRock => 2.5,
-        BossKind::Mothership => 1.6,
-        BossKind::BlazingCore => 2.0,
+        BossKind::MotherRock => 2.8,
+        BossKind::Mothership => 2.1,
+        BossKind::BlazingCore => 2.4,
     }
 }
 
