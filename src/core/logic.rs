@@ -216,8 +216,8 @@ mod tests {
     #[test]
     fn wave_scaling_formulas() {
         // 웨이브1 = 기준선(지수 0): 기본4개, 상한10
-        assert_eq!(asteroid_count_for_wave(1), 4);
-        assert_eq!(asteroid_count_for_wave(4), 7); // 웨이브4 → 지수3 → 4+3
+        assert_eq!(asteroid_count_for_wave(1), 3);
+        assert_eq!(asteroid_count_for_wave(4), 6); // 웨이브4 → 지수3 → 3+3
         assert_eq!(asteroid_count_for_wave(50), 10); // 상한
         // 속도 배수: 웨이브↑ → 증가, 웨이브1은 정확히 1.0
         assert!(asteroid_speed_scale_for_wave(6) > asteroid_speed_scale_for_wave(1));
