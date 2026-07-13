@@ -60,7 +60,7 @@ pub const POWERUP_DROP_CHANCE: f32 = 0.18;
 pub const POWERUP_LIFETIME_SECS: f32 = 8.0;
 pub const POWERUP_DRIFT_SPEED: f32 = 30.0;
 pub const POWERUP_RADIUS: f32 = 12.0;
-pub const POWERUP_MAGNET_RANGE: f32 = 140.0; // 이 거리 안이면 파워업이 플레이어로 끌려옴
+pub const POWERUP_MAGNET_RANGE: f32 = 100.0; // 이 거리 안이면 파워업이 플레이어로 끌려옴
 pub const POWERUP_MAGNET_SPEED: f32 = 320.0; // 끌려오는 속도(u/s)
 pub const SHIELD_SECS: f32 = 5.0;
 
