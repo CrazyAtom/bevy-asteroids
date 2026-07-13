@@ -3,12 +3,15 @@ use bevy::prelude::*;
 use crate::core::components::Collider;
 use crate::core::config::{
     BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BOSS_BASE_HEALTH, BOSS_HEALTH_PER_CYCLE,
-    BOSS_SCORE_BONUS, BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, SHAKE_EXPLOSION, Z_ENTITY,
+    BOSS_SCORE_BONUS, BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, SHAKE_EXPLOSION, UFO_BULLET_SPEED,
+    Z_ENTITY,
 };
-use crate::core::logic::{circles_overlap, segment_circle_hit};
+use crate::core::logic::{aim_direction, circles_overlap, segment_circle_hit, AsteroidSize};
 use crate::core::state::{GameState, GameplayEntity, Score};
-use crate::entities::bullet::Bullet;
-use crate::entities::player::SpecialBeam;
+use crate::entities::asteroid::{random_velocity, spawn_asteroid};
+use crate::entities::bullet::{spawn_enemy_bullet, Bullet};
+use crate::entities::player::{Player, SpecialBeam};
+use crate::entities::ufo::{spawn_ufo, UfoSize};
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::effects::spawn_explosion;
 use crate::fx::shake::ShakeEvent;
@@ -74,6 +77,7 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
     let r = boss_radius(kind);
     commands.spawn((
         Boss { kind, health: hp, max_health: hp },
+        BossAttack { timer: Timer::from_seconds(attack_interval(kind), TimerMode::Repeating) },
         Sprite {
             image: boss_image(kind, assets),
             custom_size: Some(Vec2::splat(r * 2.0)),
@@ -85,22 +89,102 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
     ));
 }
 
+/// 보스 종류별 공격 주기(초).
+fn attack_interval(kind: BossKind) -> f32 {
+    match kind {
+        BossKind::MotherRock => 2.5,
+        BossKind::Mothership => 1.6,
+        BossKind::BlazingCore => 2.0,
+    }
+}
+
+#[derive(Component)]
+pub struct BossAttack {
+    pub timer: Timer,
+}
+
 pub struct BossPlugin;
 
 impl Plugin for BossPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (boss_movement, boss_combat).run_if(in_state(GameState::Playing)),
+            (boss_movement, boss_attack, boss_combat).run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-/// 기본 이동(느린 좌우 스윕). Task 5~7에서 kind별로 확장.
-fn boss_movement(time: Res<Time>, mut q: Query<&mut Transform, With<Boss>>) {
+/// 보스 종류별 이동 패턴.
+fn boss_movement(time: Res<Time>, mut q: Query<(&Boss, &mut Transform)>) {
     let t = time.elapsed_secs();
-    for mut tf in &mut q {
-        tf.translation.x = (t * 0.5).sin() * 220.0;
+    for (boss, mut tf) in &mut q {
+        match boss.kind {
+            // 모암: 느린 배회
+            BossKind::MotherRock => {
+                tf.translation.x = (t * 0.3).sin() * 250.0;
+                tf.translation.y = 110.0 + (t * 0.4).sin() * 60.0;
+            }
+            // 모함: 상단 좌우 스윕
+            BossKind::Mothership => {
+                tf.translation.x = (t * 0.8).sin() * 300.0;
+                tf.translation.y = 150.0;
+            }
+            // 화염 코어: 상단 고정 + 약한 부유
+            BossKind::BlazingCore => {
+                tf.translation.x = (t * 1.2).sin() * 30.0;
+                tf.translation.y = 150.0 + (t * 2.0).sin() * 15.0;
+            }
+        }
+    }
+}
+
+/// 보스 종류별 주기적 공격.
+fn boss_attack(
+    mut commands: Commands,
+    assets: Res<SpriteAssets>,
+    time: Res<Time>,
+    mut bosses: Query<(&Boss, &mut BossAttack, &Transform)>,
+    players: Query<&Transform, With<Player>>,
+) {
+    let player_pos = players.single().ok().map(|t| t.translation.truncate());
+    for (boss, mut atk, tf) in &mut bosses {
+        atk.timer.tick(time.delta());
+        if !atk.timer.is_finished() {
+            continue;
+        }
+        let pos = tf.translation.truncate();
+        match boss.kind {
+            // 모암: 소행성 파편 방사
+            BossKind::MotherRock => {
+                for _ in 0..3 {
+                    let size = AsteroidSize::Medium;
+                    spawn_asteroid(&mut commands, &assets, size, pos, random_velocity(size));
+                }
+            }
+            // 모함: 플레이어 조준 3-way + 가끔 소형 UFO 소환
+            BossKind::Mothership => {
+                if let Some(pp) = player_pos {
+                    let dir = aim_direction(pos, pp);
+                    for a in [-0.2f32, 0.0, 0.2] {
+                        let d = (Quat::from_rotation_z(a) * dir.extend(0.0)).truncate();
+                        spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                    }
+                }
+                use rand::RngExt;
+                if rand::rng().random_range(0.0..1.0) < 0.4 {
+                    spawn_ufo(&mut commands, &assets, UfoSize::Small, pos.x < 0.0);
+                }
+            }
+            // 화염 코어: 방사형 탄막(전방위 12발)
+            BossKind::BlazingCore => {
+                let n = 12;
+                for i in 0..n {
+                    let ang = i as f32 / n as f32 * std::f32::consts::TAU;
+                    let d = Vec2::new(ang.cos(), ang.sin());
+                    spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                }
+            }
+        }
     }
 }
 
