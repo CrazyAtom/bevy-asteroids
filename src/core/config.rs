@@ -88,3 +88,8 @@ pub const EXPLOSION_FRAME_SECS: f32 = 0.06;
 // Phase 5 — 스테이지/보스
 pub const CYCLE_LEN: usize = 3;     // 한 사이클의 스테이지 수(= 무작위로 뽑을 테마 수)
 pub const WAVES_PER_STAGE: u32 = 3; // 스테이지당 보스 전 웨이브 수
+pub const BULLET_BOSS_DAMAGE: f32 = 1.0;
+pub const BEAM_BOSS_DAMAGE: f32 = 4.0;
+pub const BOSS_BASE_HEALTH: f32 = 40.0;      // 기준 체력
+pub const BOSS_HEALTH_PER_CYCLE: f32 = 20.0; // 사이클마다 증가
+pub const BOSS_SCORE_BONUS: u32 = 2000;      // 격파 보너스
