@@ -18,7 +18,7 @@ src/
 ├── main.rs      # App 조립: 플러그인 등록, 윈도우/카메라, AssetPlugin 경로
 ├── ui.rs        # HUD·배너·보스 체력 바·게임오버
 ├── core/        # 게임 무관 코어 (config·logic·components·state)
-├── entities/    # 게임 오브젝트 (asteroid·boss·bullet·player·powerup·ufo)
+├── entities/    # 게임 오브젝트 (asteroid·boss·bullet·player·special_weapon·powerup·ufo)
 ├── systems/     # 엔티티 교차 시스템 (collision·movement·stage)
 └── fx/          # 연출·에셋 (sprites·animation·audio·background·effects·shake)
 ```

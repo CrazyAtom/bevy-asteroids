@@ -33,6 +33,7 @@ fn main() {
         .add_plugins(systems::movement::MovementPlugin)
         .add_plugins(core::state::GameStatePlugin)
         .add_plugins(entities::player::PlayerPlugin)
+        .add_plugins(entities::special_weapon::SpecialWeaponPlugin)
         .add_plugins(entities::bullet::BulletPlugin)
         .add_plugins(systems::stage::StagePlugin)
         .add_plugins(entities::boss::BossPlugin)

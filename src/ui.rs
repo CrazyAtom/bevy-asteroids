@@ -3,7 +3,8 @@ use bevy::text::FontSize;
 use bevy_persistent::prelude::*;
 
 use crate::core::state::{GameState, GameplayEntity, HighScore, Lives, Score};
-use crate::entities::player::{Player, RapidFire, Shield, Spread, SpecialWeapon};
+use crate::entities::player::{Player, RapidFire, Shield, Spread};
+use crate::entities::special_weapon::SpecialWeapon;
 use crate::entities::boss::Boss;
 use crate::fx::sprites::SpriteAssets;
 use crate::systems::stage::{theme_name, Progression};

@@ -7,7 +7,8 @@ use crate::core::config::{
     POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS, SPREAD_MAX_LEVEL, SPREAD_SECS, Z_ENTITY,
 };
 use crate::core::state::{GameState, GameplayEntity, Lives};
-use crate::entities::player::{Player, RapidFire, Shield, SpecialWeapon, Spread};
+use crate::entities::player::{Player, RapidFire, Shield, Spread};
+use crate::entities::special_weapon::SpecialWeapon;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 

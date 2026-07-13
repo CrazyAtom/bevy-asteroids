@@ -114,7 +114,8 @@ src/
 │   ├── components.rs    #   공유 컴포넌트: Velocity, AngularVelocity, Collider, Wrapping
 │   └── state.rs         #   GameState, 리소스(Score/Lives/HighScore), reset_game
 ├── entities/            # 게임 오브젝트 (각 모듈 = 컴포넌트 + 스폰 + 플러그인 + 시스템)
-│   ├── player.rs        #   우주선: 입력·추진·화염·실드·특수무기·하이퍼스페이스
+│   ├── player.rs        #   우주선: 입력·추진·화염·실드·하이퍼스페이스
+│   ├── special_weapon.rs #  특수무기(X): 발동·레이저 빔·수명
 │   ├── asteroid.rs      #   소행성 스폰/분열
 │   ├── bullet.rs        #   총알(아군/적)
 │   ├── ufo.rs           #   적 UFO
