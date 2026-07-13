@@ -4,7 +4,7 @@ use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
     BEAM_LENGTH, BEAM_LIFETIME_SECS, BEAM_WIDTH, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
     SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
-    SHIP_THRUST, STARTING_SPECIAL_CHARGES, Z_BEAM, Z_ENTITY, Z_FLAME,
+    SHIP_THRUST, SPAWN_INVINCIBILITY_SECS, STARTING_SPECIAL_CHARGES, Z_BEAM, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
@@ -120,6 +120,8 @@ pub fn spawn_player_entity(commands: &mut Commands, assets: &SpriteAssets) {
                 t.tick(t.duration()); // 시작 시 준비완료
                 t
             }),
+            // (재)스폰 직후 잠깐 무적: 리스폰 지점에 위험요소가 있어도 즉사 연쇄를 막는다.
+            Shield(Timer::from_seconds(SPAWN_INVINCIBILITY_SECS, TimerMode::Once)),
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -352,6 +354,22 @@ mod tests {
         let weapon = q.single(app.world()).unwrap();
         assert_eq!(weapon.charges, STARTING_SPECIAL_CHARGES);
         assert!(weapon.charges > 0, "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
+    }
+
+    #[test]
+    fn player_spawns_with_brief_invincibility() {
+        let mut app = App::new();
+        let assets = crate::fx::sprites::dummy_sprite_assets();
+        app.world_mut()
+            .run_system_once(move |mut commands: Commands| {
+                spawn_player_entity(&mut commands, &assets);
+            })
+            .unwrap();
+        // (재)스폰 시 일시 무적(Shield)을 받아 즉사 연쇄를 막는다.
+        let mut q = app
+            .world_mut()
+            .query_filtered::<(), (With<Player>, With<Shield>)>();
+        assert_eq!(q.iter(app.world()).count(), 1);
     }
 
     #[test]

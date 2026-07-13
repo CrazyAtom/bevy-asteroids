@@ -21,6 +21,7 @@ pub const UFO_BULLET_LIFETIME_SECS: f32 = 2.5;
 pub const UFO_BULLET_SPEED: f32 = 320.0;
 
 pub const STARTING_LIVES: u32 = 3;
+pub const SPAWN_INVINCIBILITY_SECS: f32 = 2.0; // (재)스폰 직후 일시 무적(즉사 연쇄 방지)
 
 pub const BASE_ASTEROIDS: usize = 4;
 pub const MAX_ASTEROIDS: usize = 10;
