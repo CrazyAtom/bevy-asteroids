@@ -43,6 +43,8 @@ fn main() {
         .add_plugins(entities::ufo::UfoPlugin)
         .add_plugins(entities::powerup::PowerupPlugin)
         .add_plugins(ui::UiPlugin)
+        .add_plugins(fx::sprites::SpritesPlugin)
+        .add_plugins(fx::animation::AnimationPlugin)
         .add_systems(Startup, (setup_camera, setup_high_score))
         .run();
 }

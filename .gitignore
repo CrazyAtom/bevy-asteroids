@@ -5,6 +5,9 @@
 # 빌드 시 생성되는 합성 WAV
 /assets/sounds/*.wav
 
+# 빌드 시 SVG에서 생성되는 스프라이트 PNG
+/assets/sprites/*.png
+
 # macOS
 .DS_Store
 

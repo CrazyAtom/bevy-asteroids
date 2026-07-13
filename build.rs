@@ -16,7 +16,41 @@ fn main() {
     write_wav(dir, "special.wav", synth(0.5, |t| 200.0 + 100.0 * (t * 8.0).sin(), 0.5, true));
     write_wav(dir, "hyperspace.wav", synth(0.3, |t| 800.0 - 700.0 * t / 0.3, 0.3, false));
     write_wav(dir, "game_over.wav", synth(0.6, |t| 300.0 - 200.0 * t / 0.6, 0.4, false));
+
+    // ── 스프라이트: assets/sprites/src/*.svg → assets/sprites/*.png ──
+    rasterize_sprites();
+    println!("cargo:rerun-if-changed=assets/sprites/src");
     println!("cargo:rerun-if-changed=build.rs");
+}
+
+const SPRITE_SCALE: f32 = 4.0; // SVG viewBox 대비 렌더 배율(선명도)
+
+/// assets/sprites/src 의 모든 SVG를 viewBox의 SPRITE_SCALE배 해상도 PNG로 굽는다.
+fn rasterize_sprites() {
+    use resvg::{tiny_skia, usvg};
+    let src = Path::new("assets/sprites/src");
+    let out = Path::new("assets/sprites");
+    if !src.exists() {
+        return; // 소스 없으면 조용히 통과
+    }
+    fs::create_dir_all(out).unwrap();
+    let opt = usvg::Options::default();
+    for entry in fs::read_dir(src).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|e| e.to_str()) != Some("svg") {
+            continue;
+        }
+        let data = fs::read(&path).unwrap();
+        let tree = usvg::Tree::from_data(&data, &opt).unwrap();
+        let size = tree.size();
+        let w = (size.width() * SPRITE_SCALE).ceil() as u32;
+        let h = (size.height() * SPRITE_SCALE).ceil() as u32;
+        let mut pixmap = tiny_skia::Pixmap::new(w, h).unwrap();
+        let ts = tiny_skia::Transform::from_scale(SPRITE_SCALE, SPRITE_SCALE);
+        resvg::render(&tree, ts, &mut pixmap.as_mut());
+        let stem = path.file_stem().unwrap().to_str().unwrap();
+        pixmap.save_png(out.join(format!("{stem}.png"))).unwrap();
+    }
 }
 
 /// dur초 동안 freq(t)Hz 톤(+옵션 노이즈)에 선형 감쇠 엔벨로프를 씌운 PCM(i16) 샘플 생성.

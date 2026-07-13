@@ -3,11 +3,12 @@ use bevy::prelude::*;
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
     BULLET_COLLIDER_RADIUS, BULLET_LIFETIME_SECS, BULLET_SPEED, ENEMY_BULLET_COLLIDER_RADIUS,
-    FIRE_INTERVAL, RAPID_FIRE_INTERVAL, SPREAD_ANGLE, UFO_BULLET_LIFETIME_SECS,
+    FIRE_INTERVAL, RAPID_FIRE_INTERVAL, SPREAD_ANGLE, UFO_BULLET_LIFETIME_SECS, Z_ENTITY,
 };
 use crate::entities::player::{FireCooldown, Player, RapidFire, Spread};
 use crate::core::state::{GameState, GameplayEntity};
 use crate::fx::audio::{Sfx, SfxEvent};
+use crate::fx::sprites::SpriteAssets;
 
 #[derive(Component)]
 pub struct Bullet {
@@ -25,18 +26,32 @@ impl Plugin for BulletPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (fire_bullet, bullet_lifetime, draw_bullets, enemy_bullet_lifetime, draw_enemy_bullets)
+            (fire_bullet, bullet_lifetime, enemy_bullet_lifetime)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-pub fn spawn_enemy_bullet(commands: &mut Commands, position: Vec2, velocity: Vec2) {
+pub fn spawn_enemy_bullet(
+    commands: &mut Commands,
+    assets: &SpriteAssets,
+    position: Vec2,
+    velocity: Vec2,
+) {
     commands.spawn((
         EnemyBullet {
             life: Timer::from_seconds(UFO_BULLET_LIFETIME_SECS, TimerMode::Once),
         },
-        Transform::from_translation(position.extend(0.0)),
+        Sprite {
+            image: assets.enemy_bullet.clone(),
+            custom_size: Some(Vec2::new(6.0, 14.0)),
+            ..default()
+        },
+        Transform {
+            translation: position.extend(Z_ENTITY),
+            rotation: Quat::from_rotation_z(velocity.y.atan2(velocity.x) - std::f32::consts::FRAC_PI_2),
+            ..default()
+        },
         Velocity(velocity),
         Collider { radius: ENEMY_BULLET_COLLIDER_RADIUS },
         GameplayEntity,
@@ -56,19 +71,10 @@ fn enemy_bullet_lifetime(
     }
 }
 
-fn draw_enemy_bullets(mut gizmos: Gizmos, query: Query<&Transform, With<EnemyBullet>>) {
-    for transform in &query {
-        gizmos.circle_2d(
-            Isometry2d::from_translation(transform.translation.truncate()),
-            2.5,
-            Color::srgb(1.0, 0.3, 0.3),
-        );
-    }
-}
-
 #[allow(clippy::type_complexity)]
 fn fire_bullet(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     mut sfx: MessageWriter<SfxEvent>,
@@ -90,7 +96,16 @@ fn fire_bullet(
         let dir = (Quat::from_rotation_z(a) * base).truncate();
         commands.spawn((
             Bullet { life: Timer::from_seconds(BULLET_LIFETIME_SECS, TimerMode::Once) },
-            Transform::from_translation(nose),
+            Sprite {
+                image: assets.bullet.clone(),
+                custom_size: Some(Vec2::new(6.0, 14.0)),
+                ..default()
+            },
+            Transform {
+                translation: nose,
+                rotation: Quat::from_rotation_z(dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2),
+                ..default()
+            },
             Velocity(dir * BULLET_SPEED),
             Collider { radius: BULLET_COLLIDER_RADIUS },
             Wrapping,
@@ -110,16 +125,6 @@ fn bullet_lifetime(
         if bullet.life.is_finished() {
             commands.entity(entity).despawn();
         }
-    }
-}
-
-fn draw_bullets(mut gizmos: Gizmos, query: Query<&Transform, With<Bullet>>) {
-    for transform in &query {
-        gizmos.circle_2d(
-            Isometry2d::from_translation(transform.translation.truncate()),
-            2.0,
-            Color::WHITE,
-        );
     }
 }
 
@@ -153,9 +158,10 @@ mod tests {
     #[test]
     fn spawn_enemy_bullet_creates_entity() {
         let mut app = App::new();
+        let assets = crate::fx::sprites::dummy_sprite_assets();
         app.world_mut()
-            .run_system_once(|mut commands: Commands| {
-                spawn_enemy_bullet(&mut commands, Vec2::ZERO, Vec2::new(0.0, -100.0));
+            .run_system_once(move |mut commands: Commands| {
+                spawn_enemy_bullet(&mut commands, &assets, Vec2::ZERO, Vec2::new(0.0, -100.0));
             })
             .unwrap();
         let mut q = app.world_mut().query::<&EnemyBullet>();
@@ -178,6 +184,7 @@ mod tests {
         use crate::entities::player::{FireCooldown, Player};
         let mut app = App::new();
         app.add_message::<SfxEvent>();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         let mut time = Time::<()>::default();
         time.advance_by(std::time::Duration::from_secs_f32(1.0));
         app.insert_resource(time);
@@ -202,6 +209,7 @@ mod tests {
         use crate::entities::player::{FireCooldown, Player, Spread};
         let mut app = App::new();
         app.add_message::<SfxEvent>();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         let mut time = Time::<()>::default();
         time.advance_by(std::time::Duration::from_secs_f32(1.0));
         app.insert_resource(time);

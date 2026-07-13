@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use rand::RngExt;
 
 use crate::core::components::Velocity;
-use crate::core::config::{PARTICLE_LIFETIME_SECS, PARTICLE_SPEED_MAX, PARTICLE_SPEED_MIN};
+use crate::core::config::{PARTICLE_LIFETIME_SECS, PARTICLE_SPEED_MAX, PARTICLE_SPEED_MIN, Z_PARTICLE};
 use crate::core::state::{GameState, GameplayEntity};
+use crate::fx::sprites::SpriteAssets;
 
 #[derive(Component)]
 pub struct Particle {
@@ -16,13 +17,13 @@ impl Plugin for EffectsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (particle_lifetime, draw_particles).run_if(in_state(GameState::Playing)),
+            (particle_lifetime, fade_particles).run_if(in_state(GameState::Playing)),
         );
     }
 }
 
 /// 지정 위치에서 바깥 방향으로 흩어지는 단명 파티클을 count개 스폰한다.
-pub fn spawn_explosion(commands: &mut Commands, position: Vec2, count: usize) {
+pub fn spawn_explosion(commands: &mut Commands, assets: &SpriteAssets, position: Vec2, count: usize) {
     let mut rng = rand::rng();
     for _ in 0..count {
         let angle = rng.random_range(0.0..std::f32::consts::TAU);
@@ -30,11 +31,18 @@ pub fn spawn_explosion(commands: &mut Commands, position: Vec2, count: usize) {
         let velocity = Vec2::new(angle.cos(), angle.sin()) * speed;
         commands.spawn((
             Particle { life: Timer::from_seconds(PARTICLE_LIFETIME_SECS, TimerMode::Once) },
-            Transform::from_translation(position.extend(0.0)),
+            Sprite {
+                image: assets.spark.clone(),
+                custom_size: Some(Vec2::splat(6.0)),
+                ..default()
+            },
+            Transform::from_translation(position.extend(Z_PARTICLE)),
             Velocity(velocity),
             GameplayEntity,
         ));
     }
+    // 폭발 지점에 프레임 애니메이션 폭발도 함께 재생.
+    crate::fx::animation::spawn_explosion_anim(commands, assets, position);
 }
 
 fn particle_lifetime(mut commands: Commands, time: Res<Time>, mut query: Query<(Entity, &mut Particle)>) {
@@ -46,16 +54,15 @@ fn particle_lifetime(mut commands: Commands, time: Res<Time>, mut query: Query<(
     }
 }
 
-fn draw_particles(mut gizmos: Gizmos, query: Query<(&Transform, &Particle)>) {
-    for (transform, particle) in &query {
-        // 남은 수명 비율로 밝기 감소
-        let frac = particle.life.fraction_remaining();
-        let color = Color::srgb(frac, frac, frac * 0.6);
-        gizmos.circle_2d(
-            Isometry2d::from_translation(transform.translation.truncate()),
-            1.5,
-            color,
-        );
+/// 남은 수명 비율(0~1)을 스프라이트 알파로 매핑.
+pub fn particle_alpha(fraction_remaining: f32) -> f32 {
+    fraction_remaining.clamp(0.0, 1.0)
+}
+
+/// 파티클의 남은 수명에 맞춰 스파크 스프라이트를 서서히 투명하게 만든다.
+fn fade_particles(mut q: Query<(&Particle, &mut Sprite)>) {
+    for (particle, mut sprite) in &mut q {
+        sprite.color.set_alpha(particle_alpha(particle.life.fraction_remaining()));
     }
 }
 
@@ -66,11 +73,19 @@ mod tests {
     use std::time::Duration;
 
     #[test]
+    fn particle_alpha_follows_remaining_life() {
+        assert!((particle_alpha(1.0) - 1.0).abs() < 1e-6);
+        assert!(particle_alpha(0.0).abs() < 1e-6);
+        assert!(particle_alpha(0.5) > 0.0 && particle_alpha(0.5) < 1.0);
+    }
+
+    #[test]
     fn spawn_explosion_creates_particles() {
         let mut app = App::new();
+        let assets = crate::fx::sprites::dummy_sprite_assets();
         app.world_mut()
-            .run_system_once(|mut commands: Commands| {
-                spawn_explosion(&mut commands, Vec2::ZERO, 8);
+            .run_system_once(move |mut commands: Commands| {
+                spawn_explosion(&mut commands, &assets, Vec2::ZERO, 8);
             })
             .unwrap();
         let mut q = app.world_mut().query::<&Particle>();

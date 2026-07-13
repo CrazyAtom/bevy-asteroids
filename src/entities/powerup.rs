@@ -3,12 +3,13 @@ use rand::RngExt;
 
 use crate::core::components::{Collider, Velocity};
 use crate::core::config::{
-    POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS,
-    SPREAD_SECS,
+    POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_MAGNET_RANGE, POWERUP_MAGNET_SPEED,
+    POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS, SPREAD_SECS, Z_ENTITY,
 };
 use crate::core::state::{GameState, GameplayEntity, Lives};
 use crate::entities::player::{Player, RapidFire, Shield, SpecialWeapon, Spread};
 use crate::fx::audio::{Sfx, SfxEvent};
+use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SpecialWeaponKind {
@@ -36,7 +37,8 @@ impl Plugin for PowerupPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (powerup_lifetime, draw_powerups, collect_powerup).run_if(in_state(GameState::Playing)),
+            (powerup_lifetime, attract_powerups, collect_powerup)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -52,13 +54,34 @@ pub fn pick_powerup_kind(roll: f32) -> PowerupKind {
     }
 }
 
-pub fn spawn_powerup(commands: &mut Commands, kind: PowerupKind, position: Vec2) {
+/// PowerupKind → SpriteAssets.powerup 배열 인덱스.
+pub fn powerup_sprite_index(kind: PowerupKind) -> usize {
+    match kind {
+        PowerupKind::Shield => 0,
+        PowerupKind::RapidFire => 1,
+        PowerupKind::Spread => 2,
+        PowerupKind::ExtraLife => 3,
+        PowerupKind::SpecialWeapon(_) => 4,
+    }
+}
+
+pub fn spawn_powerup(
+    commands: &mut Commands,
+    assets: &SpriteAssets,
+    kind: PowerupKind,
+    position: Vec2,
+) {
     let mut rng = rand::rng();
     let angle = rng.random_range(0.0..std::f32::consts::TAU);
     let velocity = Vec2::new(angle.cos(), angle.sin()) * POWERUP_DRIFT_SPEED;
     commands.spawn((
         Powerup { kind, life: Timer::from_seconds(POWERUP_LIFETIME_SECS, TimerMode::Once) },
-        Transform::from_translation(position.extend(0.0)),
+        Sprite {
+            image: assets.powerup[powerup_sprite_index(kind)].clone(),
+            custom_size: Some(sprite_size_for(POWERUP_RADIUS)),
+            ..default()
+        },
+        Transform::from_translation(position.extend(Z_ENTITY)),
         Velocity(velocity),
         Collider { radius: POWERUP_RADIUS },
         GameplayEntity,
@@ -74,23 +97,33 @@ fn powerup_lifetime(mut commands: Commands, time: Res<Time>, mut q: Query<(Entit
     }
 }
 
-fn powerup_color(kind: PowerupKind) -> Color {
-    match kind {
-        PowerupKind::Shield => Color::srgb(0.3, 0.6, 1.0),
-        PowerupKind::RapidFire => Color::srgb(1.0, 0.8, 0.2),
-        PowerupKind::Spread => Color::srgb(0.6, 1.0, 0.4),
-        PowerupKind::ExtraLife => Color::srgb(1.0, 0.4, 0.6),
-        PowerupKind::SpecialWeapon(_) => Color::srgb(1.0, 0.3, 1.0),
+/// 파워업이 자석 범위 안이면 플레이어를 향하는 속도를, 아니면 None을 반환.
+pub fn magnet_velocity(powerup_pos: Vec2, player_pos: Vec2, range: f32, speed: f32) -> Option<Vec2> {
+    let to_player = player_pos - powerup_pos;
+    let dist = to_player.length();
+    if dist < range && dist > 0.01 {
+        Some(to_player / dist * speed)
+    } else {
+        None
     }
 }
 
-fn draw_powerups(mut gizmos: Gizmos, q: Query<(&Transform, &Powerup)>) {
-    for (transform, p) in &q {
-        gizmos.circle_2d(
-            Isometry2d::from_translation(transform.translation.truncate()),
-            POWERUP_RADIUS,
-            powerup_color(p.kind),
-        );
+/// 자석 범위 안의 파워업 속도를 플레이어 방향으로 덮어써 끌어당긴다.
+fn attract_powerups(
+    players: Query<&Transform, With<Player>>,
+    mut powerups: Query<(&Transform, &mut Velocity), With<Powerup>>,
+) {
+    let Ok(player_tf) = players.single() else { return };
+    let ppos = player_tf.translation.truncate();
+    for (tf, mut vel) in &mut powerups {
+        if let Some(v) = magnet_velocity(
+            tf.translation.truncate(),
+            ppos,
+            POWERUP_MAGNET_RANGE,
+            POWERUP_MAGNET_SPEED,
+        ) {
+            vel.0 = v;
+        }
     }
 }
 
@@ -160,11 +193,32 @@ mod tests {
     }
 
     #[test]
+    fn powerup_index_is_stable_and_distinct() {
+        use PowerupKind::*;
+        assert_eq!(powerup_sprite_index(Shield), 0);
+        assert_eq!(powerup_sprite_index(RapidFire), 1);
+        assert_eq!(powerup_sprite_index(Spread), 2);
+        assert_eq!(powerup_sprite_index(ExtraLife), 3);
+        assert_eq!(powerup_sprite_index(SpecialWeapon(SpecialWeaponKind::LaserBeam)), 4);
+    }
+
+    #[test]
+    fn magnet_pulls_only_within_range() {
+        // 범위 밖 → None
+        assert!(magnet_velocity(Vec2::ZERO, Vec2::new(500.0, 0.0), 140.0, 320.0).is_none());
+        // 범위 안 → 플레이어 방향 단위벡터 * speed
+        let v = magnet_velocity(Vec2::ZERO, Vec2::new(100.0, 0.0), 140.0, 320.0).unwrap();
+        assert!((v.x - 320.0).abs() < 1e-3);
+        assert!(v.y.abs() < 1e-3);
+    }
+
+    #[test]
     fn spawn_powerup_creates_entity() {
         let mut app = App::new();
+        let assets = crate::fx::sprites::dummy_sprite_assets();
         app.world_mut()
-            .run_system_once(|mut c: Commands| {
-                spawn_powerup(&mut c, PowerupKind::ExtraLife, Vec2::ZERO);
+            .run_system_once(move |mut c: Commands| {
+                spawn_powerup(&mut c, &assets, PowerupKind::ExtraLife, Vec2::ZERO);
             })
             .unwrap();
         let mut q = app.world_mut().query::<&Powerup>();

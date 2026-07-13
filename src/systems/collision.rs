@@ -10,6 +10,7 @@ use crate::core::config::EXPLOSION_PARTICLES;
 use crate::core::config::POWERUP_DROP_CHANCE;
 use crate::core::config::{BEAM_LENGTH, BEAM_WIDTH, SHAKE_EXPLOSION, SHAKE_HIT};
 use crate::fx::effects::spawn_explosion;
+use crate::fx::sprites::SpriteAssets;
 use crate::fx::shake::ShakeEvent;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::core::logic::{circles_overlap, next_asteroid_size, segment_circle_hit};
@@ -30,8 +31,10 @@ impl Plugin for CollisionPlugin {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn bullet_vs_asteroid(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     mut score: ResMut<Score>,
     mut shake: MessageWriter<ShakeEvent>,
     mut sfx: MessageWriter<SfxEvent>,
@@ -55,20 +58,20 @@ fn bullet_vs_asteroid(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(asteroid_entity).despawn();
                 score.0 += asteroid.size.score();
-                spawn_explosion(&mut commands, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
                 sfx.write(SfxEvent(Sfx::Explosion));
 
                 if let Some(next) = next_asteroid_size(asteroid.size) {
                     let base = asteroid_tf.translation.truncate();
                     for _ in 0..2 {
-                        spawn_asteroid(&mut commands, next, base, random_velocity(next));
+                        spawn_asteroid(&mut commands, &assets, next, base, random_velocity(next));
                     }
                 }
                 {
                     let mut rng = rand::rng();
                     if rng.random_range(0.0..1.0) < POWERUP_DROP_CHANCE {
-                        spawn_powerup(&mut commands, pick_powerup_kind(rng.random_range(0.0..1.0)), asteroid_tf.translation.truncate());
+                        spawn_powerup(&mut commands, &assets, pick_powerup_kind(rng.random_range(0.0..1.0)), asteroid_tf.translation.truncate());
                     }
                 }
                 break; // 이 총알은 소진됨
@@ -77,8 +80,10 @@ fn bullet_vs_asteroid(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn bullet_vs_ufo(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     mut score: ResMut<Score>,
     mut shake: MessageWriter<ShakeEvent>,
     mut sfx: MessageWriter<SfxEvent>,
@@ -101,13 +106,13 @@ fn bullet_vs_ufo(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(ufo_entity).despawn();
                 score.0 += ufo.size.score();
-                spawn_explosion(&mut commands, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
                 sfx.write(SfxEvent(Sfx::Explosion));
                 {
                     let mut rng = rand::rng();
                     if rng.random_range(0.0..1.0) < POWERUP_DROP_CHANCE {
-                        spawn_powerup(&mut commands, pick_powerup_kind(rng.random_range(0.0..1.0)), ufo_tf.translation.truncate());
+                        spawn_powerup(&mut commands, &assets, pick_powerup_kind(rng.random_range(0.0..1.0)), ufo_tf.translation.truncate());
                     }
                 }
                 break;
@@ -116,8 +121,10 @@ fn bullet_vs_ufo(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn beam_vs_targets(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     mut score: ResMut<Score>,
     mut sfx: MessageWriter<SfxEvent>,
     beams: Query<&SpecialBeam>,
@@ -135,7 +142,7 @@ fn beam_vs_targets(
                 destroyed.insert(e);
                 commands.entity(e).despawn();
                 score.0 += asteroid.size.score();
-                spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));
             }
         }
@@ -147,7 +154,7 @@ fn beam_vs_targets(
                 destroyed.insert(e);
                 commands.entity(e).despawn();
                 score.0 += ufo.size.score();
-                spawn_explosion(&mut commands, tf.translation.truncate(), EXPLOSION_PARTICLES);
+                spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));
             }
         }
@@ -157,6 +164,7 @@ fn beam_vs_targets(
 #[allow(clippy::too_many_arguments)]
 fn player_damage(
     mut commands: Commands,
+    assets: Res<SpriteAssets>,
     mut lives: ResMut<Lives>,
     mut next_state: ResMut<NextState<GameState>>,
     mut shake: MessageWriter<ShakeEvent>,
@@ -203,14 +211,14 @@ fn player_damage(
         return;
     }
 
-    spawn_explosion(&mut commands, ppos, EXPLOSION_PARTICLES);
+    spawn_explosion(&mut commands, &assets, ppos, EXPLOSION_PARTICLES);
     shake.write(ShakeEvent(SHAKE_HIT));
     lives.0 = lives.0.saturating_sub(1);
     commands.entity(player_entity).despawn();
     if lives.0 == 0 {
         next_state.set(GameState::GameOver);
     } else {
-        spawn_player_entity(&mut commands);
+        spawn_player_entity(&mut commands, &assets);
     }
 }
 
@@ -224,6 +232,7 @@ mod tests {
     #[test]
     fn bullet_splits_large_asteroid_and_scores() {
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
@@ -257,6 +266,7 @@ mod tests {
     #[test]
     fn small_asteroid_vanishes_without_children() {
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
@@ -280,6 +290,7 @@ mod tests {
     #[test]
     fn destroying_asteroid_spawns_particles() {
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
@@ -301,6 +312,7 @@ mod tests {
     #[test]
     fn player_hit_loses_life_and_respawns() {
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
@@ -326,6 +338,7 @@ mod tests {
     #[test]
     fn last_life_triggers_game_over() {
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
@@ -354,6 +367,7 @@ mod tests {
     fn bullet_destroys_ufo_and_scores() {
         use crate::entities::ufo::{Ufo, UfoSize};
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
@@ -377,6 +391,7 @@ mod tests {
     #[test]
     fn two_overlapping_beams_score_target_once() {
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<SfxEvent>();
         app.insert_resource(Score(0));
         app.world_mut().spawn(SpecialBeam {
@@ -405,6 +420,7 @@ mod tests {
     #[test]
     fn enemy_bullet_hits_player_loses_life() {
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
@@ -425,6 +441,7 @@ mod tests {
     fn shielded_player_takes_no_damage() {
         use crate::entities::player::{Player, Shield};
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_message::<SfxEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
@@ -446,6 +463,7 @@ mod tests {
     fn simultaneous_hits_cost_only_one_life() {
         use crate::entities::ufo::{Ufo, UfoSize};
         let mut app = App::new();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();

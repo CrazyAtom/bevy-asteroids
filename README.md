@@ -1,6 +1,6 @@
 # 🚀 Bevy Asteroids
 
-Rust 게임 엔진 [Bevy](https://bevyengine.org) `0.19` 로 만든 클래식 **애스토로이드(우주선 슈터)** 게임입니다. 원조 Asteroids(1979)의 벡터 라인 그래픽 스타일을 코드로 재현했으며, 외부 이미지 에셋 없이 순수 코드로만 렌더링합니다.
+Rust 게임 엔진 [Bevy](https://bevyengine.org) `0.19` 로 만든 클래식 **애스토로이드(우주선 슈터)** 게임입니다. 자체 제작한 카툰 스프라이트로 렌더링하며, 스프라이트는 저장소에 커밋된 SVG를 빌드 시 PNG로 생성(`build.rs`)해 외부에서 내려받는 에셋 없이 자체 완결됩니다.
 
 ![Rust](https://img.shields.io/badge/Rust-2021-000000?logo=rust&logoColor=white)
 ![Bevy](https://img.shields.io/badge/Bevy-0.19-232326?logo=bevy&logoColor=white)
@@ -35,7 +35,7 @@ Rust 게임 엔진 [Bevy](https://bevyengine.org) `0.19` 로 만든 클래식 **
 - **목숨 & 점수** — 목숨 3개, 크기별 점수, 실시간 HUD 표시.
 - **웨이브** — 모든 소행성을 부수면 새 웨이브가 등장합니다.
 - **게임오버 & 재시작** — 목숨이 0이 되면 게임오버, `R` 로 재시작.
-- **벡터 라인 렌더링** — Bevy `Gizmos` 즉시 모드로 흰색 외곽선만 그립니다(에셋 0개).
+- **카툰 스프라이트 렌더링** — 자체 제작 SVG를 빌드 시 PNG로 굽는 스프라이트 아트(우주선·소행성·UFO·파워업·폭발 애니메이션 등). 외부 다운로드 에셋 0개.
 
 ---
 

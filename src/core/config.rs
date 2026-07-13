@@ -1,5 +1,3 @@
-use bevy::prelude::Color;
-
 pub const WINDOW_WIDTH: f32 = 1280.0;
 pub const WINDOW_HEIGHT: f32 = 720.0;
 pub const HALF_WIDTH: f32 = WINDOW_WIDTH / 2.0;
@@ -13,8 +11,6 @@ pub const SHIP_DAMPING: f32 = 0.985;
 // 우주선 최고 속도 상한(units/s).
 pub const SHIP_MAX_SPEED: f32 = 450.0;
 pub const SHIP_BRAKE_RATE: f32 = 3.0; // 브레이크 감쇠율(1/s)
-pub const SHIP_COLOR: Color = Color::srgb(0.40, 0.90, 1.00); // 청록
-pub const FLAME_COLOR: Color = Color::srgb(1.00, 0.55, 0.15); // 주황
 
 pub const BULLET_SPEED: f32 = 620.0;
 pub const BULLET_LIFETIME_SECS: f32 = 1.2;
@@ -25,6 +21,7 @@ pub const UFO_BULLET_LIFETIME_SECS: f32 = 2.5;
 pub const UFO_BULLET_SPEED: f32 = 320.0;
 
 pub const STARTING_LIVES: u32 = 3;
+pub const SPAWN_INVINCIBILITY_SECS: f32 = 2.0; // (재)스폰 직후 일시 무적(즉사 연쇄 방지)
 
 pub const BASE_ASTEROIDS: usize = 4;
 pub const MAX_ASTEROIDS: usize = 10;
@@ -43,10 +40,6 @@ pub const UFO_SMALL_RADIUS: f32 = 12.0;
 pub const UFO_FIRE_INTERVAL_SECS: f32 = 1.4;
 pub const UFO_SPAWN_INTERVAL_BASE: f32 = 12.0;
 pub const UFO_SPAWN_INTERVAL_MIN: f32 = 5.0;
-
-// Phase 3 — 배경
-pub const STAR_COUNT: usize = 120;
-pub const TWINKLE_SPEED: f32 = 2.0;
 
 // Phase 3 — 화면 흔들림
 pub const MAX_SHAKE_OFFSET: f32 = 18.0;
@@ -67,6 +60,8 @@ pub const POWERUP_DROP_CHANCE: f32 = 0.18;
 pub const POWERUP_LIFETIME_SECS: f32 = 8.0;
 pub const POWERUP_DRIFT_SPEED: f32 = 30.0;
 pub const POWERUP_RADIUS: f32 = 12.0;
+pub const POWERUP_MAGNET_RANGE: f32 = 100.0; // 이 거리 안이면 파워업이 플레이어로 끌려옴
+pub const POWERUP_MAGNET_SPEED: f32 = 320.0; // 끌려오는 속도(u/s)
 pub const SHIELD_SECS: f32 = 5.0;
 
 // Phase 3 — 특수무기
@@ -77,3 +72,15 @@ pub const BEAM_LENGTH: f32 = 2000.0;
 
 // Phase 3 — 하이퍼스페이스
 pub const HYPERSPACE_COOLDOWN_SECS: f32 = 2.0;
+
+// Phase 4 — 스프라이트 렌더링
+pub const VISUAL_FIT: f32 = 1.2; // 콜라이더 반경 대비 스프라이트 표시 배율
+pub const Z_BACKGROUND: f32 = -100.0;
+pub const Z_FLAME: f32 = -1.0;
+pub const Z_ENTITY: f32 = 0.0;
+pub const Z_SHIELD: f32 = 5.0;
+pub const Z_BEAM: f32 = 10.0;
+pub const Z_PARTICLE: f32 = 12.0;
+pub const Z_EXPLOSION: f32 = 15.0;
+pub const EXPLOSION_FRAME_COUNT: usize = 6;
+pub const EXPLOSION_FRAME_SECS: f32 = 0.06;
