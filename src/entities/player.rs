@@ -254,12 +254,19 @@ fn tick_fire_mods(
 
 /// Shield 컴포넌트 유무에 따라 실드 버블 스프라이트의 가시성을 토글한다.
 fn update_shield_sprite(
-    player_q: Query<Has<Shield>, With<Player>>,
+    time: Res<Time>,
+    player_q: Query<Option<&Shield>, With<Player>>,
     mut shield_q: Query<&mut Visibility, With<ShieldSprite>>,
 ) {
-    let Ok(has_shield) = player_q.single() else { return };
+    let Ok(shield) = player_q.single() else { return };
+    let visible = match shield {
+        None => false,
+        // 만료 0.6초 전부터 깜빡여 보호가 끝나감을 알린다.
+        Some(s) if s.0.remaining_secs() < 0.6 => (time.elapsed_secs() * 14.0).sin() > 0.0,
+        Some(_) => true,
+    };
     for mut vis in &mut shield_q {
-        *vis = if has_shield {
+        *vis = if visible {
             Visibility::Visible
         } else {
             Visibility::Hidden
