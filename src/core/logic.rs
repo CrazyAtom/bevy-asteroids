@@ -87,7 +87,7 @@ pub fn asteroid_count_for_wave(wave: u32) -> usize {
 }
 
 pub fn asteroid_speed_scale_for_wave(wave: u32) -> f32 {
-    (1.0 + difficulty_index(wave) as f32 * 0.08).min(2.0)
+    (1.0 + difficulty_index(wave) as f32 * 0.065).min(2.0)
 }
 
 pub fn ufo_interval_for_wave(wave: u32) -> f32 {

@@ -91,9 +91,9 @@ pub struct ThemeParams {
 
 pub fn theme_params(t: ThemeId) -> ThemeParams {
     match t {
-        ThemeId::AsteroidBelt => ThemeParams { count_mul: 1.3, speed_mul: 1.0, ufo_interval_mul: 1.0 },
-        ThemeId::AlienFleet => ThemeParams { count_mul: 1.0, speed_mul: 1.0, ufo_interval_mul: 0.6 },
-        ThemeId::SolarFlare => ThemeParams { count_mul: 1.0, speed_mul: 1.4, ufo_interval_mul: 1.0 },
+        ThemeId::AsteroidBelt => ThemeParams { count_mul: 1.15, speed_mul: 1.0, ufo_interval_mul: 1.0 },
+        ThemeId::AlienFleet => ThemeParams { count_mul: 1.0, speed_mul: 1.0, ufo_interval_mul: 0.8 },
+        ThemeId::SolarFlare => ThemeParams { count_mul: 1.0, speed_mul: 1.2, ufo_interval_mul: 1.0 },
     }
 }
 
