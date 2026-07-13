@@ -29,7 +29,8 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_hud)
+        app.init_resource::<LastStage>()
+            .add_systems(OnEnter(GameState::Playing), (spawn_hud, reset_last_stage))
             .add_systems(
                 Update,
                 (update_hud, announce_stage, announce_boss, wave_banner_lifetime, update_boss_bar)
@@ -45,7 +46,7 @@ fn spawn_hud(mut commands: Commands) {
     commands.spawn((
         Hud,
         GameplayEntity,
-        Text::new("Score: 0   Lives: 3   Wave: 1"),
+        Text::new("Score: 0   Lives: 3"),
         TextFont { font_size: FontSize::Px(24.0), ..default() },
         TextColor(Color::WHITE),
         Node {
@@ -126,18 +127,26 @@ fn update_hud(
     }
 }
 
+#[derive(Resource, Default)]
+struct LastStage(Option<(u32, usize)>);
+
+/// 재시작 시 스테이지 배너 중복 억제 상태를 초기화한다(Local이 아니라 리소스라 리셋 가능).
+fn reset_last_stage(mut last: ResMut<LastStage>) {
+    last.0 = None;
+}
+
 /// 스테이지(사이클·순번)가 바뀌면 "STAGE c-s 테마명" 배너를 잠깐 띄운다.
 fn announce_stage(
     mut commands: Commands,
     prog: Res<Progression>,
-    mut last: Local<Option<(u32, usize)>>,
+    mut last: ResMut<LastStage>,
     existing: Query<Entity, With<WaveBanner>>,
 ) {
     let key = (prog.cycle, prog.stage_in_cycle);
-    if *last == Some(key) {
+    if last.0 == Some(key) {
         return;
     }
-    *last = Some(key);
+    last.0 = Some(key);
     // 이전 배너가 남아 있으면 제거해 중첩 방지
     for entity in &existing {
         commands.entity(entity).despawn();

@@ -37,20 +37,16 @@ fn theme_bg(t: ThemeId, assets: &SpriteAssets) -> Handle<Image> {
     }
 }
 
-/// 스테이지(테마)가 바뀌면 배경 스프라이트 이미지를 교체한다.
+/// 현재 테마 배경이 아니면 교체한다(상태 비의존 → 재시작 시에도 자동 교정).
 fn update_theme_background(
     prog: Res<Progression>,
     assets: Res<SpriteAssets>,
-    mut last: Local<Option<(u32, usize)>>,
     mut q: Query<&mut Sprite, With<BackgroundSprite>>,
 ) {
-    let key = (prog.cycle, prog.stage_in_cycle);
-    if *last == Some(key) {
-        return;
-    }
-    *last = Some(key);
-    let img = theme_bg(prog.current_theme(), &assets);
+    let want = theme_bg(prog.current_theme(), &assets);
     for mut sprite in &mut q {
-        sprite.image = img.clone();
+        if sprite.image != want {
+            sprite.image = want.clone();
+        }
     }
 }

@@ -48,6 +48,8 @@ pub struct SpecialBeam {
     pub life: Timer,
     pub origin: Vec2,
     pub dir: Vec2,
+    /// 보스에게는 프레임당이 아니라 빔 1회당 한 번만 피해를 준다.
+    pub damaged_boss: bool,
 }
 
 /// 추진/브레이크 시 우주선 뒤/앞에 나타나는 화염 스프라이트(자식 엔티티) 마커.
@@ -279,7 +281,12 @@ fn activate_special(
             let angle = dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2;
             let center = origin + dir.normalize_or_zero() * (BEAM_LENGTH * 0.5);
             commands.spawn((
-                SpecialBeam { life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once), origin, dir },
+                SpecialBeam {
+                    life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once),
+                    origin,
+                    dir,
+                    damaged_boss: false,
+                },
                 Sprite {
                     image: assets.beam.clone(),
                     custom_size: Some(Vec2::new(BEAM_WIDTH, BEAM_LENGTH)),

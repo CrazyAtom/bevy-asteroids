@@ -37,6 +37,10 @@ impl Progression {
 }
 
 pub fn new_progression() -> Progression {
+    debug_assert!(
+        THEME_POOL.len() >= CYCLE_LEN,
+        "CYCLE_LEN must not exceed THEME_POOL size (current_theme 인덱싱 안전 보장)"
+    );
     Progression {
         cycle: 0,
         stage_in_cycle: 0,

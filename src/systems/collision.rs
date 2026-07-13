@@ -408,11 +408,13 @@ mod tests {
             life: Timer::from_seconds(0.4, TimerMode::Once),
             origin: Vec2::ZERO,
             dir: Vec2::Y,
+            damaged_boss: false,
         });
         app.world_mut().spawn(SpecialBeam {
             life: Timer::from_seconds(0.4, TimerMode::Once),
             origin: Vec2::ZERO,
             dir: Vec2::Y,
+            damaged_boss: false,
         });
         app.world_mut().spawn((
             Asteroid { size: AsteroidSize::Large },

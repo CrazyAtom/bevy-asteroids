@@ -199,7 +199,7 @@ fn boss_combat(
     mut sfx: MessageWriter<SfxEvent>,
     mut bosses: Query<(Entity, &mut Boss, &Transform, &Collider)>,
     bullets: Query<(Entity, &Transform, &Collider), With<Bullet>>,
-    beams: Query<&SpecialBeam>,
+    mut beams: Query<&mut SpecialBeam>,
 ) {
     for (boss_e, mut boss, boss_tf, boss_col) in &mut bosses {
         let bpos = boss_tf.translation.truncate();
@@ -214,12 +214,15 @@ fn boss_combat(
             }
         }
         if !defeated {
-            for beam in &beams {
-                if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, bpos, boss_col.radius)
-                    && apply_boss_damage(&mut boss, BEAM_BOSS_DAMAGE)
+            for mut beam in &mut beams {
+                if !beam.damaged_boss
+                    && segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, bpos, boss_col.radius)
                 {
-                    defeated = true;
-                    break;
+                    beam.damaged_boss = true;
+                    if apply_boss_damage(&mut boss, BEAM_BOSS_DAMAGE) {
+                        defeated = true;
+                        break;
+                    }
                 }
             }
         }
