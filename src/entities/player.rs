@@ -8,7 +8,7 @@ use crate::core::config::{
     Z_BEAM, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
-use crate::core::state::{GameState, GameplayEntity};
+use crate::core::state::{GameState, GameplayEntity, Lives};
 use crate::entities::powerup::SpecialWeaponKind;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::shake::ShakeEvent;
@@ -89,6 +89,9 @@ impl Plugin for PlayerPlugin {
                 FixedUpdate,
                 apply_ship_damping.run_if(in_state(GameState::Playing)),
             );
+        // 디버그 빌드 한정: F1로 HUD 상태 전부 채워 확인(무적 실드 포함).
+        #[cfg(debug_assertions)]
+        app.add_systems(Update, debug_fill_hud.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -359,6 +362,29 @@ fn hyperspace(
     velocity.0 = Vec2::ZERO;
     cooldown.0 = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
     sfx.write(SfxEvent(Sfx::Hyperspace));
+}
+
+/// 디버그: F1을 누르면 HUD 확인용으로 모든 파워업·목숨·특수충전을 부여한다.
+/// 실드가 무적을 주므로 멈춰서 HUD를 느긋하게 볼 수 있다.
+#[cfg(debug_assertions)]
+fn debug_fill_hud(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    mut lives: ResMut<Lives>,
+    mut players: Query<(Entity, &mut SpecialWeapon), With<Player>>,
+) {
+    if !keys.just_pressed(KeyCode::F1) {
+        return;
+    }
+    if let Ok((entity, mut weapon)) = players.single_mut() {
+        lives.0 += 1;
+        weapon.charges += 1;
+        commands.entity(entity).insert((
+            Shield(Timer::from_seconds(999.0, TimerMode::Once)),
+            RapidFire(Timer::from_seconds(999.0, TimerMode::Once)),
+            Spread { timer: Timer::from_seconds(999.0, TimerMode::Once), level: 3 },
+        ));
+    }
 }
 
 #[cfg(test)]
