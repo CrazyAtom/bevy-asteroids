@@ -5,6 +5,7 @@ use bevy_persistent::prelude::*;
 use crate::core::state::{GameState, GameplayEntity, HighScore, Lives, Score};
 use crate::entities::player::{Player, RapidFire, Shield, Spread, SpecialWeapon};
 use crate::entities::boss::Boss;
+use crate::fx::sprites::SpriteAssets;
 use crate::systems::stage::{theme_name, Progression};
 
 #[derive(Component)]
@@ -15,6 +16,21 @@ struct BossHealthBar;
 
 #[derive(Component)]
 struct BossHealthFill;
+
+/// 목숨 하트 아이콘(인덱스). index < lives 이면 표시.
+#[derive(Component)]
+struct LifeIcon(usize);
+
+/// 특수무기 충전 수 텍스트.
+#[derive(Component)]
+struct SpChargeText;
+
+/// 활성 파워업 배지 아이콘(0=실드,1=연사,2=확산). 활성 시만 표시.
+#[derive(Component)]
+struct ModIcon(u8);
+
+const MAX_HEART_ICONS: usize = 8;
+const HUD_ICON_PX: f32 = 22.0;
 
 #[derive(Component)]
 struct GameOverScreen;
@@ -33,7 +49,15 @@ impl Plugin for UiPlugin {
             .add_systems(OnEnter(GameState::Playing), (spawn_hud, reset_last_stage))
             .add_systems(
                 Update,
-                (update_hud, announce_stage, announce_boss, wave_banner_lifetime, update_boss_bar)
+                (
+                    update_hud,
+                    update_life_icons,
+                    update_mod_icons,
+                    announce_stage,
+                    announce_boss,
+                    wave_banner_lifetime,
+                    update_boss_bar,
+                )
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnEnter(GameState::GameOver), spawn_game_over)
@@ -42,20 +66,73 @@ impl Plugin for UiPlugin {
     }
 }
 
-fn spawn_hud(mut commands: Commands) {
-    commands.spawn((
-        Hud,
-        GameplayEntity,
-        Text::new("Score: 0   Lives: 3"),
-        TextFont { font_size: FontSize::Px(24.0), ..default() },
-        TextColor(Color::WHITE),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(12.0),
-            left: Val::Px(12.0),
-            ..default()
-        },
-    ));
+fn spawn_hud(mut commands: Commands, assets: Res<SpriteAssets>) {
+    let icon = || Node {
+        width: Val::Px(HUD_ICON_PX),
+        height: Val::Px(HUD_ICON_PX),
+        ..default()
+    };
+    let row = || Node {
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        column_gap: Val::Px(3.0),
+        ..default()
+    };
+    commands
+        .spawn((
+            GameplayEntity,
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(12.0),
+                left: Val::Px(12.0),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(14.0),
+                ..default()
+            },
+        ))
+        .with_children(|root| {
+            // Score / High / Stage 텍스트
+            root.spawn((
+                Hud,
+                Text::new("Score: 0   High: 0   Stage 1-1"),
+                TextFont { font_size: FontSize::Px(22.0), ..default() },
+                TextColor(Color::WHITE),
+            ));
+            // 목숨: 하트 나열
+            root.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(1.0),
+                ..default()
+            })
+            .with_children(|hearts| {
+                for i in 0..MAX_HEART_ICONS {
+                    hearts.spawn((LifeIcon(i), ImageNode::new(assets.powerup[3].clone()), icon()));
+                }
+            });
+            // 특수무기: 아이콘 + 충전 수
+            root.spawn(row()).with_children(|sp| {
+                sp.spawn((ImageNode::new(assets.powerup[4].clone()), icon()));
+                sp.spawn((
+                    SpChargeText,
+                    Text::new("0"),
+                    TextFont { font_size: FontSize::Px(22.0), ..default() },
+                    TextColor(Color::WHITE),
+                ));
+            });
+            // 활성 파워업 배지(실드/연사/확산; 활성 시만 표시)
+            root.spawn(row()).with_children(|mods| {
+                for i in 0..3u8 {
+                    mods.spawn((
+                        ModIcon(i),
+                        ImageNode::new(assets.powerup[i as usize].clone()),
+                        icon(),
+                        Visibility::Hidden,
+                    ));
+                }
+            });
+        });
 
     // 보스 체력 바(기본 숨김; 보스 존재 시 표시)
     commands
@@ -100,30 +177,51 @@ fn update_boss_bar(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn update_hud(
     score: Res<Score>,
-    lives: Res<Lives>,
     high: Res<Persistent<HighScore>>,
     prog: Res<Progression>,
-    player: Query<(Option<&SpecialWeapon>, Option<&Shield>, Option<&RapidFire>, Option<&Spread>), With<Player>>,
-    mut query: Query<&mut Text, With<Hud>>,
+    player: Query<&SpecialWeapon, With<Player>>,
+    mut hud: Query<&mut Text, (With<Hud>, Without<SpChargeText>)>,
+    mut sp: Query<&mut Text, (With<SpChargeText>, Without<Hud>)>,
 ) {
-    let (charges, mods) = if let Ok((sw, sh, rf, sp)) = player.single() {
-        let charges = sw.map(|w| w.charges).unwrap_or(0);
-        let mut mods = String::new();
-        if sh.is_some() { mods.push_str(" [SHIELD]"); }
-        if rf.is_some() { mods.push_str(" [RAPID]"); }
-        if sp.is_some() { mods.push_str(" [SPREAD]"); }
-        (charges, mods)
-    } else {
-        (0, String::new())
-    };
-    for mut text in &mut query {
+    for mut text in &mut hud {
         text.0 = format!(
-            "Score: {}   Lives: {}   Stage {}-{}   High: {}   SP: {}{}",
-            score.0, lives.0, prog.cycle + 1, prog.stage_in_cycle + 1, high.0, charges, mods
+            "Score: {}   High: {}   Stage {}-{}",
+            score.0, high.0, prog.cycle + 1, prog.stage_in_cycle + 1
         );
+    }
+    let charges = player.single().map(|w| w.charges).unwrap_or(0);
+    for mut text in &mut sp {
+        text.0 = format!("{charges}");
+    }
+}
+
+/// 목숨 수만큼 하트 아이콘을 표시한다.
+fn update_life_icons(lives: Res<Lives>, mut q: Query<(&LifeIcon, &mut Visibility)>) {
+    for (icon, mut vis) in &mut q {
+        *vis = if (icon.0 as u32) < lives.0 {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+}
+
+/// 활성 파워업 배지 아이콘을 표시/숨김한다(실드/연사/확산).
+#[allow(clippy::type_complexity)]
+fn update_mod_icons(
+    player: Query<(Has<Shield>, Has<RapidFire>, Has<Spread>), With<Player>>,
+    mut icons: Query<(&ModIcon, &mut Visibility)>,
+) {
+    let (sh, rf, sp) = player.single().unwrap_or((false, false, false));
+    for (icon, mut vis) in &mut icons {
+        let on = match icon.0 {
+            0 => sh,
+            1 => rf,
+            _ => sp,
+        };
+        *vis = if on { Visibility::Visible } else { Visibility::Hidden };
     }
 }
 
@@ -265,7 +363,6 @@ mod tests {
         app.world_mut().run_system_once(update_hud).unwrap();
         let text = app.world().entity(e).get::<Text>().unwrap();
         assert!(text.0.contains("150"));
-        assert!(text.0.contains("Lives: 2"));
         assert!(text.0.contains("Stage 1-1"));
         assert!(text.0.contains("High: 0"));
     }
