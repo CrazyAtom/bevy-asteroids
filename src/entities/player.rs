@@ -4,7 +4,8 @@ use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
     BEAM_LENGTH, BEAM_LIFETIME_SECS, BEAM_WIDTH, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
     SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
-    SHIP_THRUST, SPAWN_INVINCIBILITY_SECS, STARTING_SPECIAL_CHARGES, Z_BEAM, Z_ENTITY, Z_FLAME,
+    SHIP_THRUST, SHIP_TURN_ACCEL, SHIP_TURN_MIN, SPAWN_INVINCIBILITY_SECS, STARTING_SPECIAL_CHARGES,
+    Z_BEAM, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
@@ -20,6 +21,8 @@ pub struct Player;
 pub struct EngineState {
     pub thrusting: bool,
     pub braking: bool,
+    /// 현재 회전 각속도(누르는 동안 ramp up). 떼면 0으로 리셋.
+    pub turn_speed: f32,
 }
 
 #[derive(Component)]
@@ -167,7 +170,14 @@ fn player_input(
         if keys.pressed(KeyCode::ArrowRight) {
             turn -= 1.0;
         }
-        transform.rotate_z(turn * SHIP_ROTATION_SPEED * dt);
+        // 회전 각속도 ramp: 살짝 누르면 느리게(미세 조준), 계속 누르면 상한까지 가속.
+        if turn != 0.0 {
+            engine.turn_speed =
+                (engine.turn_speed.max(SHIP_TURN_MIN) + SHIP_TURN_ACCEL * dt).min(SHIP_ROTATION_SPEED);
+        } else {
+            engine.turn_speed = 0.0;
+        }
+        transform.rotate_z(turn * engine.turn_speed * dt);
 
         engine.thrusting = keys.pressed(KeyCode::ArrowUp);
         engine.braking = keys.pressed(KeyCode::ArrowDown);

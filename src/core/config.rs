@@ -3,7 +3,9 @@ pub const WINDOW_HEIGHT: f32 = 720.0;
 pub const HALF_WIDTH: f32 = WINDOW_WIDTH / 2.0;
 pub const HALF_HEIGHT: f32 = WINDOW_HEIGHT / 2.0;
 
-pub const SHIP_ROTATION_SPEED: f32 = 4.0; // rad/s
+pub const SHIP_ROTATION_SPEED: f32 = 4.0; // rad/s (회전 각속도 상한)
+pub const SHIP_TURN_MIN: f32 = 1.2;       // 회전 시작 각속도(미세 조준용, rad/s)
+pub const SHIP_TURN_ACCEL: f32 = 8.0;     // 누르는 동안 각속도 가속(rad/s^2)
 pub const SHIP_THRUST: f32 = 320.0;       // units/s^2
 pub const SHIP_COLLIDER_RADIUS: f32 = 12.0;
 // 우주선 감속(마찰): FixedUpdate 틱당 속도에 곱하는 계수. 1.0=마찰없음, 낮을수록 빨리 멈춤.
