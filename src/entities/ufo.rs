@@ -63,12 +63,16 @@ fn ufo_spawn_system(
     mut commands: Commands,
     assets: Res<SpriteAssets>,
     time: Res<Time>,
-    wave: Res<crate::core::state::Wave>,
+    prog: Res<crate::systems::stage::Progression>,
     mut timer: ResMut<UfoSpawnTimer>,
 ) {
-    // 웨이브1은 UFO 없이 소행성만(초반 학습 구간). 틱 전에 반환해 타이머를
-    // 얼려두면, 웨이브2 진입 후 온전한 12초 뒤 첫 UFO가 등장한다.
-    if !crate::core::logic::ufo_active_for_wave(wave.0) {
+    use crate::systems::stage::{stage_wave_number, theme_params, StagePhase};
+    // 보스전/비활성 구간에선 UFO 미스폰(타이머 얼림).
+    if prog.phase != StagePhase::Waves {
+        return;
+    }
+    let wave_no = stage_wave_number(&prog);
+    if !crate::core::logic::ufo_active_for_wave(wave_no) {
         return;
     }
     timer.0.tick(time.delta());
@@ -76,7 +80,7 @@ fn ufo_spawn_system(
         return;
     }
     let mut rng = rand::rng();
-    let size = if rng.random_range(0.0..1.0) < crate::core::logic::small_ufo_probability_for_wave(wave.0)
+    let size = if rng.random_range(0.0..1.0) < crate::core::logic::small_ufo_probability_for_wave(wave_no)
     {
         UfoSize::Small
     } else {
@@ -84,8 +88,9 @@ fn ufo_spawn_system(
     };
     let from_left = rng.random_range(0.0..1.0) < 0.5;
     spawn_ufo(&mut commands, &assets, size, from_left);
-    // 다음 간격을 웨이브 기반으로 재설정
-    let interval = crate::core::logic::ufo_interval_for_wave(wave.0);
+    // 다음 간격을 웨이브 + 테마 배율 기반으로 재설정
+    let interval = crate::core::logic::ufo_interval_for_wave(wave_no)
+        * theme_params(prog.current_theme()).ufo_interval_mul;
     timer.0 = Timer::from_seconds(interval, TimerMode::Once);
 }
 

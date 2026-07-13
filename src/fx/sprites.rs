@@ -18,6 +18,12 @@ pub struct SpriteAssets {
     pub spark: Handle<Image>,
     pub shield: Handle<Image>,
     pub background: Handle<Image>,
+    pub boss_mother_rock: Handle<Image>,
+    pub boss_mothership: Handle<Image>,
+    pub boss_blazing_core: Handle<Image>,
+    pub bg_belt: Handle<Image>,
+    pub bg_fleet: Handle<Image>,
+    pub bg_flare: Handle<Image>,
     pub powerup: [Handle<Image>; 5], // Shield, RapidFire, Spread, ExtraLife, SpecialWeapon
     pub explosion_frames: Vec<Handle<Image>>,
 }
@@ -57,6 +63,12 @@ fn build_sprite_assets(asset_server: &AssetServer) -> SpriteAssets {
         spark: asset_server.load("sprites/spark.png"),
         shield: asset_server.load("sprites/shield.png"),
         background: asset_server.load("sprites/background.png"),
+        boss_mother_rock: asset_server.load("sprites/boss_mother_rock.png"),
+        boss_mothership: asset_server.load("sprites/boss_mothership.png"),
+        boss_blazing_core: asset_server.load("sprites/boss_blazing_core.png"),
+        bg_belt: asset_server.load("sprites/bg_belt.png"),
+        bg_fleet: asset_server.load("sprites/bg_fleet.png"),
+        bg_flare: asset_server.load("sprites/bg_flare.png"),
         powerup: [
             asset_server.load("sprites/powerup_shield.png"),
             asset_server.load("sprites/powerup_rapid.png"),
@@ -86,6 +98,12 @@ pub fn dummy_sprite_assets() -> SpriteAssets {
         spark: h.clone(),
         shield: h.clone(),
         background: h.clone(),
+        boss_mother_rock: h.clone(),
+        boss_mothership: h.clone(),
+        boss_blazing_core: h.clone(),
+        bg_belt: h.clone(),
+        bg_fleet: h.clone(),
+        bg_flare: h.clone(),
         powerup: [h.clone(), h.clone(), h.clone(), h.clone(), h.clone()],
         explosion_frames: vec![h.clone(); 6],
     }

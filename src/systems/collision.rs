@@ -16,6 +16,7 @@ use crate::fx::audio::{Sfx, SfxEvent};
 use crate::core::logic::{circles_overlap, next_asteroid_size, segment_circle_hit};
 use crate::entities::player::{spawn_player_entity, Player, Shield, SpecialBeam};
 use crate::core::state::{GameState, Lives, Score};
+use crate::entities::boss::Boss;
 use crate::entities::ufo::Ufo;
 use rand::RngExt;
 
@@ -171,6 +172,7 @@ fn player_damage(
     players: Query<(Entity, &Transform, &Collider, Option<&Shield>), With<Player>>,
     asteroids: Query<(&Transform, &Collider), With<Asteroid>>,
     ufos: Query<(&Transform, &Collider), With<Ufo>>,
+    bosses: Query<(&Transform, &Collider), With<Boss>>,
     enemy_bullets: Query<(Entity, &Transform, &Collider), With<EnemyBullet>>,
 ) {
     let Ok((player_entity, player_tf, player_col, shield)) = players.single() else {
@@ -193,6 +195,14 @@ fn player_damage(
     if !hit {
         for (u_tf, u_col) in &ufos {
             if circles_overlap(ppos, pr, u_tf.translation.truncate(), u_col.radius) {
+                hit = true;
+                break;
+            }
+        }
+    }
+    if !hit {
+        for (b_tf, b_col) in &bosses {
+            if circles_overlap(ppos, pr, b_tf.translation.truncate(), b_col.radius) {
                 hit = true;
                 break;
             }
@@ -398,11 +408,13 @@ mod tests {
             life: Timer::from_seconds(0.4, TimerMode::Once),
             origin: Vec2::ZERO,
             dir: Vec2::Y,
+            damaged_boss: false,
         });
         app.world_mut().spawn(SpecialBeam {
             life: Timer::from_seconds(0.4, TimerMode::Once),
             origin: Vec2::ZERO,
             dir: Vec2::Y,
+            damaged_boss: false,
         });
         app.world_mut().spawn((
             Asteroid { size: AsteroidSize::Large },

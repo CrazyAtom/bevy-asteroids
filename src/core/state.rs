@@ -19,9 +19,6 @@ pub struct Score(pub u32);
 #[derive(Resource)]
 pub struct Lives(pub u32);
 
-#[derive(Resource)]
-pub struct Wave(pub u32);
-
 #[derive(Resource, Serialize, Deserialize, Default)]
 pub struct HighScore(pub u32);
 
@@ -36,22 +33,22 @@ impl Plugin for GameStatePlugin {
         app.init_state::<GameState>()
             .insert_resource(Score(0))
             .insert_resource(Lives(STARTING_LIVES))
-            .insert_resource(Wave(1))
+            .insert_resource(crate::systems::stage::new_progression())
             .add_systems(OnEnter(GameState::Playing), reset_game)
             .add_systems(OnExit(GameState::Playing), despawn_gameplay_entities)
             .add_systems(OnEnter(GameState::GameOver), (save_high_score, play_game_over_sfx));
     }
 }
 
-fn reset_game(
+pub(crate) fn reset_game(
     mut score: ResMut<Score>,
     mut lives: ResMut<Lives>,
-    mut wave: ResMut<Wave>,
+    mut prog: ResMut<crate::systems::stage::Progression>,
     mut ufo_spawn_timer: ResMut<crate::entities::ufo::UfoSpawnTimer>,
 ) {
     score.0 = 0;
     lives.0 = STARTING_LIVES;
-    wave.0 = 1;
+    *prog = crate::systems::stage::new_progression();
     ufo_spawn_timer.0 = Timer::from_seconds(crate::core::config::UFO_SPAWN_INTERVAL_BASE, TimerMode::Once);
 }
 
@@ -85,7 +82,7 @@ mod tests {
         let mut app = App::new();
         app.insert_resource(Score(50));
         app.insert_resource(Lives(0));
-        app.insert_resource(Wave(5));
+        app.insert_resource(crate::systems::stage::new_progression());
         let mut stale_timer = Timer::from_seconds(UFO_SPAWN_INTERVAL_BASE, TimerMode::Once);
         stale_timer.tick(std::time::Duration::from_secs_f32(UFO_SPAWN_INTERVAL_BASE));
         app.insert_resource(UfoSpawnTimer(stale_timer));

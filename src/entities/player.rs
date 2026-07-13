@@ -4,7 +4,8 @@ use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
     BEAM_LENGTH, BEAM_LIFETIME_SECS, BEAM_WIDTH, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
     SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
-    SHIP_THRUST, SPAWN_INVINCIBILITY_SECS, STARTING_SPECIAL_CHARGES, Z_BEAM, Z_ENTITY, Z_FLAME,
+    SHIP_THRUST, SHIP_TURN_ACCEL, SHIP_TURN_MIN, SPAWN_INVINCIBILITY_SECS, STARTING_SPECIAL_CHARGES,
+    Z_BEAM, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity};
@@ -20,6 +21,8 @@ pub struct Player;
 pub struct EngineState {
     pub thrusting: bool,
     pub braking: bool,
+    /// 현재 회전 각속도(누르는 동안 ramp up). 떼면 0으로 리셋.
+    pub turn_speed: f32,
 }
 
 #[derive(Component)]
@@ -32,7 +35,10 @@ pub struct Shield(pub Timer);
 pub struct RapidFire(pub Timer);
 
 #[derive(Component)]
-pub struct Spread(pub Timer);
+pub struct Spread {
+    pub timer: Timer,
+    pub level: u8, // 1..=SPREAD_MAX_LEVEL. 동시 발사 수 = level * 3
+}
 
 #[derive(Component)]
 pub struct HyperspaceCooldown(pub Timer);
@@ -48,6 +54,8 @@ pub struct SpecialBeam {
     pub life: Timer,
     pub origin: Vec2,
     pub dir: Vec2,
+    /// 보스에게는 프레임당이 아니라 빔 1회당 한 번만 피해를 준다.
+    pub damaged_boss: bool,
 }
 
 /// 추진/브레이크 시 우주선 뒤/앞에 나타나는 화염 스프라이트(자식 엔티티) 마커.
@@ -165,7 +173,14 @@ fn player_input(
         if keys.pressed(KeyCode::ArrowRight) {
             turn -= 1.0;
         }
-        transform.rotate_z(turn * SHIP_ROTATION_SPEED * dt);
+        // 회전 각속도 ramp: 살짝 누르면 느리게(미세 조준), 계속 누르면 상한까지 가속.
+        if turn != 0.0 {
+            engine.turn_speed =
+                (engine.turn_speed.max(SHIP_TURN_MIN) + SHIP_TURN_ACCEL * dt).min(SHIP_ROTATION_SPEED);
+        } else {
+            engine.turn_speed = 0.0;
+        }
+        transform.rotate_z(turn * engine.turn_speed * dt);
 
         engine.thrusting = keys.pressed(KeyCode::ArrowUp);
         engine.braking = keys.pressed(KeyCode::ArrowDown);
@@ -233,8 +248,8 @@ fn tick_fire_mods(
         }
     }
     for (e, mut t) in &mut spread {
-        t.0.tick(time.delta());
-        if t.0.is_finished() {
+        t.timer.tick(time.delta());
+        if t.timer.is_finished() {
             commands.entity(e).remove::<Spread>();
         }
     }
@@ -242,12 +257,19 @@ fn tick_fire_mods(
 
 /// Shield 컴포넌트 유무에 따라 실드 버블 스프라이트의 가시성을 토글한다.
 fn update_shield_sprite(
-    player_q: Query<Has<Shield>, With<Player>>,
+    time: Res<Time>,
+    player_q: Query<Option<&Shield>, With<Player>>,
     mut shield_q: Query<&mut Visibility, With<ShieldSprite>>,
 ) {
-    let Ok(has_shield) = player_q.single() else { return };
+    let Ok(shield) = player_q.single() else { return };
+    let visible = match shield {
+        None => false,
+        // 만료 0.6초 전부터 깜빡여 보호가 끝나감을 알린다.
+        Some(s) if s.0.remaining_secs() < 1.0 => (time.elapsed_secs() * 10.0).sin() > 0.0,
+        Some(_) => true,
+    };
     for mut vis in &mut shield_q {
-        *vis = if has_shield {
+        *vis = if visible {
             Visibility::Visible
         } else {
             Visibility::Hidden
@@ -279,7 +301,12 @@ fn activate_special(
             let angle = dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2;
             let center = origin + dir.normalize_or_zero() * (BEAM_LENGTH * 0.5);
             commands.spawn((
-                SpecialBeam { life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once), origin, dir },
+                SpecialBeam {
+                    life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once),
+                    origin,
+                    dir,
+                    damaged_boss: false,
+                },
                 Sprite {
                     image: assets.beam.clone(),
                     custom_size: Some(Vec2::new(BEAM_WIDTH, BEAM_LENGTH)),

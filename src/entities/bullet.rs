@@ -91,8 +91,10 @@ fn fire_bullet(
     cooldown.0 = Timer::from_seconds(interval, TimerMode::Once);
     let base = ship.rotation * Vec3::Y;
     let nose = ship.translation + base * 18.0;
-    let angles: &[f32] = if spread.is_some() { &[-SPREAD_ANGLE, 0.0, SPREAD_ANGLE] } else { &[0.0] };
-    for &a in angles {
+    // 확산탄: 레벨*3발을 SPREAD_ANGLE 간격으로 중앙 대칭 부채꼴 배치. 없으면 1발.
+    let count = spread.map(|s| s.level as i32 * 3).unwrap_or(1);
+    for i in 0..count {
+        let a = (i as f32 - (count as f32 - 1.0) / 2.0) * SPREAD_ANGLE;
         let dir = (Quat::from_rotation_z(a) * base).truncate();
         commands.spawn((
             Bullet { life: Timer::from_seconds(BULLET_LIFETIME_SECS, TimerMode::Once) },
@@ -222,10 +224,35 @@ mod tests {
             Player,
             Transform::default(),
             FireCooldown(cd),
-            Spread(Timer::from_seconds(6.0, TimerMode::Once)),
+            Spread { timer: Timer::from_seconds(6.0, TimerMode::Once), level: 1 },
         ));
         app.world_mut().run_system_once(fire_bullet).unwrap();
         let mut q = app.world_mut().query::<&Bullet>();
         assert_eq!(q.iter(app.world()).count(), 3);
+    }
+
+    #[test]
+    fn spread_level3_fires_nine_bullets() {
+        use crate::entities::player::{FireCooldown, Player, Spread};
+        let mut app = App::new();
+        app.add_message::<SfxEvent>();
+        app.insert_resource(crate::fx::sprites::dummy_sprite_assets());
+        let mut time = Time::<()>::default();
+        time.advance_by(std::time::Duration::from_secs_f32(1.0));
+        app.insert_resource(time);
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::Space);
+        app.insert_resource(keys);
+        let mut cd = Timer::from_seconds(0.25, TimerMode::Once);
+        cd.tick(std::time::Duration::from_secs_f32(1.0));
+        app.world_mut().spawn((
+            Player,
+            Transform::default(),
+            FireCooldown(cd),
+            Spread { timer: Timer::from_seconds(6.0, TimerMode::Once), level: 3 },
+        ));
+        app.world_mut().run_system_once(fire_bullet).unwrap();
+        let mut q = app.world_mut().query::<&Bullet>();
+        assert_eq!(q.iter(app.world()).count(), 9);
     }
 }
