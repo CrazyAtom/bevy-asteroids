@@ -108,9 +108,9 @@ pub fn themed_speed_scale(theme: ThemeId, wave_no: u32) -> f32 {
 
 pub fn theme_name(t: ThemeId) -> &'static str {
     match t {
-        ThemeId::AsteroidBelt => "소행성대",
-        ThemeId::AlienFleet => "외계 함대",
-        ThemeId::SolarFlare => "화염지대",
+        ThemeId::AsteroidBelt => "ASTEROID BELT",
+        ThemeId::AlienFleet => "ALIEN FLEET",
+        ThemeId::SolarFlare => "SOLAR FLARE",
     }
 }
 

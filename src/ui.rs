@@ -112,16 +112,16 @@ fn update_hud(
     let (charges, mods) = if let Ok((sw, sh, rf, sp)) = player.single() {
         let charges = sw.map(|w| w.charges).unwrap_or(0);
         let mut mods = String::new();
-        if sh.is_some() { mods.push_str(" [실드]"); }
-        if rf.is_some() { mods.push_str(" [연사]"); }
-        if sp.is_some() { mods.push_str(" [확산]"); }
+        if sh.is_some() { mods.push_str(" [SHIELD]"); }
+        if rf.is_some() { mods.push_str(" [RAPID]"); }
+        if sp.is_some() { mods.push_str(" [SPREAD]"); }
         (charges, mods)
     } else {
         (0, String::new())
     };
     for mut text in &mut query {
         text.0 = format!(
-            "Score: {}   Lives: {}   Stage {}-{}   High: {}   특수: {}{}",
+            "Score: {}   Lives: {}   Stage {}-{}   High: {}   SP: {}{}",
             score.0, lives.0, prog.cycle + 1, prog.stage_in_cycle + 1, high.0, charges, mods
         );
     }
@@ -200,7 +200,7 @@ fn announce_boss(
     commands.spawn((
         WaveBanner { life: Timer::from_seconds(1.5, TimerMode::Once) },
         GameplayEntity,
-        Text::new("⚠ BOSS"),
+        Text::new("! BOSS !"),
         TextFont { font_size: FontSize::Px(52.0), ..default() },
         TextColor(Color::srgb(1.0, 0.35, 0.35)),
         Node {
