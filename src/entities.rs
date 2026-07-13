@@ -3,4 +3,5 @@ pub mod boss;
 pub mod bullet;
 pub mod player;
 pub mod powerup;
+pub mod special_weapon;
 pub mod ufo;

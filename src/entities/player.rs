@@ -2,16 +2,15 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
-    BEAM_LENGTH, BEAM_LIFETIME_SECS, BEAM_WIDTH, HYPERSPACE_COOLDOWN_SECS, SHAKE_SPECIAL,
-    SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED, SHIP_ROTATION_SPEED,
-    SHIP_THRUST, SHIP_TURN_ACCEL, SHIP_TURN_MIN, SPAWN_INVINCIBILITY_SECS, STARTING_SPECIAL_CHARGES,
-    Z_BEAM, Z_ENTITY, Z_FLAME,
+    HYPERSPACE_COOLDOWN_SECS, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED,
+    SHIP_ROTATION_SPEED, SHIP_THRUST, SHIP_TURN_ACCEL, SHIP_TURN_MIN, SPAWN_INVINCIBILITY_SECS,
+    STARTING_SPECIAL_CHARGES, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity, Lives};
 use crate::entities::powerup::SpecialWeaponKind;
+use crate::entities::special_weapon::SpecialWeapon;
 use crate::fx::audio::{Sfx, SfxEvent};
-use crate::fx::shake::ShakeEvent;
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 
 #[derive(Component)]
@@ -43,21 +42,6 @@ pub struct Spread {
 #[derive(Component)]
 pub struct HyperspaceCooldown(pub Timer);
 
-#[derive(Component)]
-pub struct SpecialWeapon {
-    pub kind: SpecialWeaponKind,
-    pub charges: u32,
-}
-
-#[derive(Component)]
-pub struct SpecialBeam {
-    pub life: Timer,
-    pub origin: Vec2,
-    pub dir: Vec2,
-    /// 보스에게는 프레임당이 아니라 빔 1회당 한 번만 피해를 준다.
-    pub damaged_boss: bool,
-}
-
 /// 추진/브레이크 시 우주선 뒤/앞에 나타나는 화염 스프라이트(자식 엔티티) 마커.
 #[derive(Component)]
 pub struct Flame;
@@ -79,8 +63,6 @@ impl Plugin for PlayerPlugin {
                     shield_tick,
                     update_shield_sprite,
                     tick_fire_mods,
-                    activate_special,
-                    tick_beam,
                     hyperspace,
                 )
                     .run_if(in_state(GameState::Playing)),
@@ -277,68 +259,6 @@ fn update_shield_sprite(
         } else {
             Visibility::Hidden
         };
-    }
-}
-
-fn activate_special(
-    mut commands: Commands,
-    assets: Res<SpriteAssets>,
-    keys: Res<ButtonInput<KeyCode>>,
-    mut sfx: MessageWriter<SfxEvent>,
-    mut shake: MessageWriter<ShakeEvent>,
-    mut query: Query<(&Transform, &mut SpecialWeapon), With<Player>>,
-) {
-    if !keys.just_pressed(KeyCode::KeyX) {
-        return;
-    }
-    let Ok((transform, mut weapon)) = query.single_mut() else { return };
-    if weapon.charges == 0 {
-        return;
-    }
-    weapon.charges -= 1;
-    let origin = transform.translation.truncate();
-    let dir = (transform.rotation * Vec3::Y).truncate();
-    match weapon.kind {
-        SpecialWeaponKind::LaserBeam => {
-            // 빔 스프라이트는 세로(+Y)로 그려짐 → dir 방향으로 회전, 원점~사거리 중앙에 배치.
-            let angle = dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2;
-            let center = origin + dir.normalize_or_zero() * (BEAM_LENGTH * 0.5);
-            commands.spawn((
-                SpecialBeam {
-                    life: Timer::from_seconds(BEAM_LIFETIME_SECS, TimerMode::Once),
-                    origin,
-                    dir,
-                    damaged_boss: false,
-                },
-                Sprite {
-                    image: assets.beam.clone(),
-                    custom_size: Some(Vec2::new(BEAM_WIDTH, BEAM_LENGTH)),
-                    ..default()
-                },
-                Transform {
-                    translation: center.extend(Z_BEAM),
-                    rotation: Quat::from_rotation_z(angle),
-                    ..default()
-                },
-                GameplayEntity,
-            ));
-        }
-    }
-    sfx.write(SfxEvent(Sfx::Special));
-    shake.write(ShakeEvent(SHAKE_SPECIAL));
-}
-
-/// 빔 수명 관리(그리기는 스프라이트가 담당). 판정은 collision::beam_vs_targets.
-fn tick_beam(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut query: Query<(Entity, &mut SpecialBeam)>,
-) {
-    for (entity, mut beam) in &mut query {
-        beam.life.tick(time.delta());
-        if beam.life.is_finished() {
-            commands.entity(entity).despawn();
-        }
     }
 }
 
