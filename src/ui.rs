@@ -32,7 +32,7 @@ impl Plugin for UiPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_hud)
             .add_systems(
                 Update,
-                (update_hud, announce_stage, wave_banner_lifetime, update_boss_bar)
+                (update_hud, announce_stage, announce_boss, wave_banner_lifetime, update_boss_bar)
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnEnter(GameState::GameOver), spawn_game_over)
@@ -174,6 +174,33 @@ fn wave_banner_lifetime(
             commands.entity(entity).despawn();
         }
     }
+}
+
+/// 보스가 등장한 프레임에 "⚠ BOSS" 배너를 잠깐 띄운다.
+fn announce_boss(
+    mut commands: Commands,
+    bosses: Query<(), Added<Boss>>,
+    existing: Query<Entity, With<WaveBanner>>,
+) {
+    if bosses.is_empty() {
+        return;
+    }
+    for entity in &existing {
+        commands.entity(entity).despawn();
+    }
+    commands.spawn((
+        WaveBanner { life: Timer::from_seconds(1.5, TimerMode::Once) },
+        GameplayEntity,
+        Text::new("⚠ BOSS"),
+        TextFont { font_size: FontSize::Px(52.0), ..default() },
+        TextColor(Color::srgb(1.0, 0.35, 0.35)),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(28.0),
+            left: Val::Percent(40.0),
+            ..default()
+        },
+    ));
 }
 
 fn spawn_game_over(mut commands: Commands, score: Res<Score>, high: Res<Persistent<HighScore>>) {
