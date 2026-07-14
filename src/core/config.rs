@@ -95,8 +95,8 @@ pub const CYCLE_LEN: usize = 3;     // 한 사이클의 스테이지 수(= 무�
 pub const WAVES_PER_STAGE: u32 = 3; // 스테이지당 보스 전 웨이브 수
 pub const BULLET_BOSS_DAMAGE: f32 = 1.0;
 pub const BEAM_BOSS_DAMAGE: f32 = 4.0;
-pub const BOSS_BASE_HEALTH: f32 = 40.0;      // 기준 체력(위협감 상향)
-pub const BOSS_HEALTH_PER_CYCLE: f32 = 14.0; // 사이클마다 증가
+pub const BOSS_BASE_HEALTH: f32 = 52.0;      // 기준 체력(전반 상향)
+pub const BOSS_HEALTH_PER_CYCLE: f32 = 18.0; // 사이클마다 증가(후반 스케일↑)
 pub const BOSS_SCORE_BONUS: u32 = 2000;      // 격파 보너스
 
 // Phase 6 — 얼음 골렘
