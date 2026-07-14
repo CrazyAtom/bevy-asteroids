@@ -34,6 +34,7 @@ fn theme_bg(t: ThemeId, assets: &SpriteAssets) -> Handle<Image> {
         ThemeId::AsteroidBelt => assets.bg_belt.clone(),
         ThemeId::AlienFleet => assets.bg_fleet.clone(),
         ThemeId::SolarFlare => assets.bg_flare.clone(),
+        ThemeId::FrozenField => assets.bg_ice.clone(),
     }
 }
 

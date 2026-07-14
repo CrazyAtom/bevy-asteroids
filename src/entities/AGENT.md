@@ -16,7 +16,7 @@
 
 - **스폰 함수는 `&SpriteAssets`를 받아** 스폰 시 `Sprite`를 부착합니다. 표시 크기는 `fx::sprites::sprite_size_for(콜라이더 반경)`.
 - 판 동안만 존재하는 엔티티엔 `core::state::GameplayEntity`를, 충돌 대상엔 `core::components::Collider{radius}`를 붙입니다.
-- 이동/회전/화면순환은 `Velocity`/`AngularVelocity`/`Wrapping`만 붙이면 `systems/movement`가 처리합니다.
+- 이동/회전은 `Velocity`/`AngularVelocity`를, 경계 처리는 순환이면 `Wrapping`을, **벽 반사 대상(소행성·얼음 보스)**이면 `EdgeReflect`를 붙이면 `systems/movement`가 처리합니다(반사 활성 여부는 `StageModifiers`가 결정).
 - 충돌·피해 판정은 여기서 하지 말고 `systems/collision`에 둡니다(엔티티 교차 관심사).
 - **확장**: 새 특수무기는 `SpecialWeaponKind`(powerup.rs) 변형 + `special_weapon.rs::activate_special`의 발동 분기로, 새 보스는 `BossKind` 변형 + `boss_movement`/`boss_attack`의 arm 추가로.
 - 방향성 스프라이트(총알·빔·화염)는 진행 방향으로 `Transform.rotation`을 맞춥니다(스프라이트 원본은 +Y 기준).

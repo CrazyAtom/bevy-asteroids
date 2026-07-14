@@ -1,10 +1,12 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
-use crate::core::components::Collider;
+use crate::core::components::{Collider, EdgeReflect, Velocity};
 use crate::core::config::{
     BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BOSS_BASE_HEALTH, BOSS_HEALTH_PER_CYCLE,
-    BOSS_SCORE_BONUS, BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, SHAKE_EXPLOSION, UFO_BULLET_SPEED,
-    Z_ENTITY,
+    BOSS_SCORE_BONUS, BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL,
+    GOLEM_DRIFT_SPEED, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION, UFO_BULLET_SPEED, Z_ENTITY,
 };
 use crate::core::logic::{aim_direction, circles_overlap, segment_circle_hit, AsteroidSize};
 use crate::core::config::STARTING_LIVES;
@@ -25,6 +27,7 @@ pub enum BossKind {
     MotherRock,
     Mothership,
     BlazingCore,
+    IceGolem,
 }
 
 pub fn boss_for_theme(t: ThemeId) -> BossKind {
@@ -32,6 +35,7 @@ pub fn boss_for_theme(t: ThemeId) -> BossKind {
         ThemeId::AsteroidBelt => BossKind::MotherRock,
         ThemeId::AlienFleet => BossKind::Mothership,
         ThemeId::SolarFlare => BossKind::BlazingCore,
+        ThemeId::FrozenField => BossKind::IceGolem,
     }
 }
 
@@ -40,6 +44,7 @@ pub struct Boss {
     pub kind: BossKind,
     pub health: f32,
     pub max_health: f32,
+    pub phase: u8,
 }
 
 /// 보스 종류별 기준 체력(모암이 가장 높음) × 사이클 증가.
@@ -48,6 +53,7 @@ pub fn boss_max_health(kind: BossKind, cycle: u32) -> f32 {
         BossKind::MotherRock => BOSS_BASE_HEALTH * 1.5,
         BossKind::Mothership => BOSS_BASE_HEALTH,
         BossKind::BlazingCore => BOSS_BASE_HEALTH * 1.2,
+        BossKind::IceGolem => BOSS_BASE_HEALTH * ICE_GOLEM_HEALTH_MUL,
     };
     base + cycle as f32 * BOSS_HEALTH_PER_CYCLE
 }
@@ -63,6 +69,7 @@ pub fn boss_image(kind: BossKind, assets: &SpriteAssets) -> Handle<Image> {
         BossKind::MotherRock => assets.boss_mother_rock.clone(),
         BossKind::Mothership => assets.boss_mothership.clone(),
         BossKind::BlazingCore => assets.boss_blazing_core.clone(),
+        BossKind::IceGolem => assets.boss_ice_golem.clone(),
     }
 }
 
@@ -71,15 +78,16 @@ pub fn boss_radius(kind: BossKind) -> f32 {
         BossKind::MotherRock => 55.0,
         BossKind::Mothership => 70.0,
         BossKind::BlazingCore => 45.0,
+        BossKind::IceGolem => 50.0,
     }
 }
 
 pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind, cycle: u32) {
     let hp = boss_max_health(kind, cycle);
     let r = boss_radius(kind);
-    commands.spawn((
-        Boss { kind, health: hp, max_health: hp },
-        BossAttack { timer: Timer::from_seconds(attack_interval(kind), TimerMode::Repeating) },
+    let mut e = commands.spawn((
+        Boss { kind, health: hp, max_health: hp, phase: 0 },
+        BossAttack { timer: Timer::from_seconds(attack_interval(kind), TimerMode::Repeating), shots: 0 },
         Sprite {
             image: boss_image(kind, assets),
             custom_size: Some(Vec2::splat(r * 2.0)),
@@ -89,6 +97,10 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
         Collider { radius: r },
         GameplayEntity,
     ));
+    // 얼음 골렘: 속도 기반 드리프트 + 벽 반사(EdgeReflect). 이동은 apply_velocity+reflect_or_wrap가 처리.
+    if kind == BossKind::IceGolem {
+        e.insert((Velocity(Vec2::new(GOLEM_DRIFT_SPEED, GOLEM_DRIFT_SPEED * 0.55)), EdgeReflect));
+    }
 }
 
 /// 보스 종류별 공격 주기(초).
@@ -97,12 +109,43 @@ fn attack_interval(kind: BossKind) -> f32 {
         BossKind::MotherRock => 2.8,
         BossKind::Mothership => 2.1,
         BossKind::BlazingCore => 2.4,
+        BossKind::IceGolem => GOLEM_ATTACK_INTERVAL,
     }
+}
+
+/// 골렘 공격 교대: 짝수 발 = 팔 휘두르기(부채꼴 파편), 홀수 발 = 내려찍기(방사 탄).
+pub fn golem_attack_is_sweep(shots: u32) -> bool {
+    shots.is_multiple_of(2)
+}
+
+/// 체력 비율로 골렘 페이즈 산출: >2/3 → 0, >1/3 → 1, 그 이하 → 2.
+pub fn golem_phase(health: f32, max_health: f32) -> u8 {
+    let r = if max_health > 0.0 { health / max_health } else { 0.0 };
+    if r > 2.0 / 3.0 {
+        0
+    } else if r > 1.0 / 3.0 {
+        1
+    } else {
+        2
+    }
+}
+
+pub fn golem_scale(phase: u8) -> f32 {
+    [1.0, 0.8, 0.62][phase.min(2) as usize]
+}
+
+pub fn golem_speed_mul(phase: u8) -> f32 {
+    [1.0, 1.35, 1.75][phase.min(2) as usize]
+}
+
+pub fn golem_attack_mul(phase: u8) -> f32 {
+    [1.0, 0.8, 0.62][phase.min(2) as usize]
 }
 
 #[derive(Component)]
 pub struct BossAttack {
     pub timer: Timer,
+    pub shots: u32,
 }
 
 pub struct BossPlugin;
@@ -111,7 +154,8 @@ impl Plugin for BossPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (boss_movement, boss_attack, boss_combat).run_if(in_state(GameState::Playing)),
+            (boss_movement, boss_attack, boss_combat, golem_phase_transition)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -136,6 +180,8 @@ fn boss_movement(time: Res<Time>, mut q: Query<(&Boss, &mut Transform)>) {
                 tf.translation.x = (t * 1.2).sin() * 30.0;
                 tf.translation.y = 150.0 + (t * 2.0).sin() * 15.0;
             }
+            // 얼음 골렘: Velocity + reflect_or_wrap로 드리프트/반사(여기선 조작 없음).
+            BossKind::IceGolem => {}
         }
     }
 }
@@ -154,6 +200,8 @@ fn boss_attack(
         if !atk.timer.is_finished() {
             continue;
         }
+        let shots = atk.shots;
+        atk.shots = atk.shots.wrapping_add(1);
         let pos = tf.translation.truncate();
         match boss.kind {
             // 모암: 소행성 파편 방사
@@ -184,6 +232,28 @@ fn boss_attack(
                     let ang = i as f32 / n as f32 * std::f32::consts::TAU;
                     let d = Vec2::new(ang.cos(), ang.sin());
                     spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                }
+            }
+            // 얼음 골렘: 팔 휘두르기(부채꼴 파편) ↔ 내려찍기(방사 탄) 교대.
+            BossKind::IceGolem => {
+                if golem_attack_is_sweep(shots) {
+                    // 팔 휘두르기: 조준 방향 ±35° 부채꼴로 소형 소행성 파편 5개(벽 반사).
+                    let base = player_pos
+                        .map(|pp| aim_direction(pos, pp))
+                        .unwrap_or(Vec2::NEG_Y);
+                    for a in [-0.61f32, -0.305, 0.0, 0.305, 0.61] {
+                        let d = (Quat::from_rotation_z(a) * base.extend(0.0)).truncate();
+                        let size = AsteroidSize::Small;
+                        spawn_asteroid(&mut commands, &assets, size, pos, d * random_velocity(size).length());
+                    }
+                } else {
+                    // 내려찍기: 방사형 얼음 탄 12발.
+                    let n = 12;
+                    for i in 0..n {
+                        let ang = i as f32 / n as f32 * std::f32::consts::TAU;
+                        let d = Vec2::new(ang.cos(), ang.sin());
+                        spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                    }
                 }
             }
         }
@@ -243,6 +313,40 @@ fn boss_combat(
     }
 }
 
+/// 골렘이 체력 구간을 넘으면 껍질이 깨진다: 스프라이트/콜라이더 축소, 가속, 공격 주기 단축, 파편 폭발 연출.
+#[allow(clippy::type_complexity)]
+fn golem_phase_transition(
+    mut commands: Commands,
+    assets: Res<SpriteAssets>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut q: Query<(&mut Boss, &mut Sprite, &mut Collider, &mut Velocity, &mut BossAttack, &Transform)>,
+) {
+    for (mut boss, mut sprite, mut collider, mut velocity, mut atk, tf) in &mut q {
+        if boss.kind != BossKind::IceGolem {
+            continue;
+        }
+        let want = golem_phase(boss.health, boss.max_health);
+        if want <= boss.phase {
+            continue;
+        }
+        boss.phase = want;
+        let base_r = boss_radius(BossKind::IceGolem);
+        let scale = golem_scale(want);
+        sprite.custom_size = Some(Vec2::splat(base_r * 2.0 * scale));
+        collider.radius = base_r * scale;
+        // 가속: 방향 유지, 속력만 페이즈 배율로.
+        let dir = velocity.0.normalize_or_zero();
+        velocity.0 = dir * GOLEM_DRIFT_SPEED * golem_speed_mul(want);
+        // 공격 주기 단축.
+        let interval = attack_interval(BossKind::IceGolem) * golem_attack_mul(want);
+        atk.timer.set_duration(Duration::from_secs_f32(interval));
+        // 껍질 깨짐 연출.
+        let pos = tf.translation.truncate();
+        spawn_explosion(&mut commands, &assets, pos, EXPLOSION_PARTICLES);
+        shake.write(ShakeEvent(SHAKE_EXPLOSION * 1.5));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,9 +368,39 @@ mod tests {
 
     #[test]
     fn damage_reduces_and_defeats() {
-        let mut b = Boss { kind: BossKind::Mothership, health: 3.0, max_health: 10.0 };
+        let mut b = Boss { kind: BossKind::Mothership, health: 3.0, max_health: 10.0, phase: 0 };
         assert!(!apply_boss_damage(&mut b, 1.0)); // 2 남음
         assert!((b.health - 2.0).abs() < 1e-6);
         assert!(apply_boss_damage(&mut b, 5.0)); // 0 이하 → 격파
+    }
+
+    #[test]
+    fn ice_golem_is_frozen_field_boss_and_tanky() {
+        assert_eq!(boss_for_theme(ThemeId::FrozenField), BossKind::IceGolem);
+        // 같은 사이클에서 골렘이 모함(기준)보다 체력이 높다.
+        assert!(boss_max_health(BossKind::IceGolem, 0) > boss_max_health(BossKind::Mothership, 0));
+    }
+
+    #[test]
+    fn golem_alternates_sweep_and_slam() {
+        assert!(golem_attack_is_sweep(0)); // 첫 발 = 팔 휘두르기
+        assert!(!golem_attack_is_sweep(1)); // 다음 = 내려찍기
+        assert!(golem_attack_is_sweep(2));
+    }
+
+    #[test]
+    fn golem_phase_thresholds() {
+        let m = 30.0;
+        assert_eq!(golem_phase(30.0, m), 0); // 만피
+        assert_eq!(golem_phase(20.1, m), 0); // >2/3
+        assert_eq!(golem_phase(15.0, m), 1); // 1/3~2/3
+        assert_eq!(golem_phase(5.0, m), 2); // <1/3
+    }
+
+    #[test]
+    fn golem_phase_scales_monotonic() {
+        assert!(golem_scale(2) < golem_scale(0)); // 작아짐
+        assert!(golem_speed_mul(2) > golem_speed_mul(0)); // 빨라짐
+        assert!(golem_attack_mul(2) < golem_attack_mul(0)); // 주기 짧아짐
     }
 }

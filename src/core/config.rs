@@ -13,6 +13,8 @@ pub const SHIP_DAMPING: f32 = 0.985;
 // 우주선 최고 속도 상한(units/s).
 pub const SHIP_MAX_SPEED: f32 = 450.0;
 pub const SHIP_BRAKE_RATE: f32 = 3.0; // 브레이크 감쇠율(1/s)
+// 얼음 테마 감쇠(기본보다 마찰↓ → 더 미끄러움).
+pub const SHIP_DAMPING_ICE: f32 = 0.997;
 
 pub const BULLET_SPEED: f32 = 620.0;
 pub const BULLET_LIFETIME_SECS: f32 = 1.2;
@@ -96,3 +98,8 @@ pub const BEAM_BOSS_DAMAGE: f32 = 4.0;
 pub const BOSS_BASE_HEALTH: f32 = 30.0;      // 기준 체력
 pub const BOSS_HEALTH_PER_CYCLE: f32 = 14.0; // 사이클마다 증가
 pub const BOSS_SCORE_BONUS: u32 = 2000;      // 격파 보너스
+
+// Phase 6 — 얼음 골렘
+pub const ICE_GOLEM_HEALTH_MUL: f32 = 1.4; // 느린 대신 높은 체력
+pub const GOLEM_DRIFT_SPEED: f32 = 55.0;   // 느린 드리프트 속도(u/s)
+pub const GOLEM_ATTACK_INTERVAL: f32 = 2.5;
