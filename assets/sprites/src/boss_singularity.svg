@@ -1,8 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140">
-  <g stroke="#0a0618" stroke-width="5" stroke-linejoin="round">
-    <ellipse cx="70" cy="70" rx="64" ry="25" fill="none" stroke="#ff8a2c" stroke-width="7" opacity="0.7"/>
-    <circle cx="70" cy="70" r="34" fill="#06040e"/>
+  <!-- 바깥 발광 헤일로 -->
+  <ellipse cx="70" cy="70" rx="66" ry="30" fill="none" stroke="#ff6a1c" stroke-width="9" opacity="0.5"/>
+  <!-- 강착원반(이중 링) -->
+  <g stroke-linejoin="round">
+    <ellipse cx="70" cy="70" rx="60" ry="24" fill="none" stroke="#ff9a2c" stroke-width="7" opacity="0.9"/>
+    <ellipse cx="70" cy="70" rx="60" ry="24" fill="none" stroke="#ffe6a0" stroke-width="2.5" opacity="0.8"/>
+    <ellipse cx="70" cy="70" rx="44" ry="15" fill="none" stroke="#7cf5ff" stroke-width="3" opacity="0.7"/>
   </g>
-  <ellipse cx="70" cy="70" rx="64" ry="25" fill="none" stroke="#7cf5ff" stroke-width="3" opacity="0.6"/>
-  <circle cx="70" cy="70" r="34" fill="none" stroke="#c8a2ff" stroke-width="2" opacity="0.7"/>
+  <!-- 사건의 지평선 핵 + 빛나는 테두리 -->
+  <circle cx="70" cy="70" r="30" fill="#050310" stroke="#0a0618" stroke-width="5"/>
+  <circle cx="70" cy="70" r="30" fill="none" stroke="#c8a2ff" stroke-width="2.5" opacity="0.85"/>
+  <circle cx="70" cy="70" r="30" fill="none" stroke="#ff9a2c" stroke-width="1" opacity="0.6"/>
+  <!-- 중심 열점 -->
+  <circle cx="70" cy="70" r="6" fill="#241640"/>
 </svg>

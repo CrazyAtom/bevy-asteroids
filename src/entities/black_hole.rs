@@ -4,9 +4,10 @@
 
 use bevy::prelude::*;
 
-use crate::core::components::{Collider, GravityBody, Velocity};
+use crate::core::components::{AngularVelocity, Collider, GravityBody, Velocity};
 use crate::core::config::{
-    BLACK_HOLE_POS_Y, BLACK_HOLE_VISUAL, EVENT_HORIZON, GRAVITY_MIN_DIST, GRAVITY_STRENGTH, Z_ENTITY,
+    BLACK_HOLE_POS_Y, BLACK_HOLE_SPIN, BLACK_HOLE_VISUAL, EVENT_HORIZON, GRAVITY_MIN_DIST,
+    GRAVITY_STRENGTH, Z_ENTITY,
 };
 use crate::core::logic::gravity_accel;
 use crate::core::state::GameState;
@@ -53,6 +54,7 @@ fn spawn_black_hole(mut commands: Commands, assets: Res<SpriteAssets>) {
         },
         Transform::from_xyz(0.0, BLACK_HOLE_POS_Y, Z_ENTITY),
         Collider { radius: EVENT_HORIZON },
+        AngularVelocity(BLACK_HOLE_SPIN), // 강착원반이 천천히 회전(화려함)
         Visibility::Hidden,
     ));
 }
@@ -97,7 +99,8 @@ fn consume_asteroids(
     let hole = hole_tf.translation.truncate();
     for (e, tf) in &asteroids {
         if tf.translation.truncate().distance(hole) < EVENT_HORIZON {
-            commands.entity(e).despawn();
+            // 같은 프레임에 총알/빔이 이 소행성을 이미 despawn했을 수 있으므로 try_despawn.
+            commands.entity(e).try_despawn();
         }
     }
 }

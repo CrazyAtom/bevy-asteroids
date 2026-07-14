@@ -59,7 +59,8 @@ fn bullet_vs_asteroid(
             ) {
                 destroyed.insert(asteroid_entity);
                 commands.entity(bullet_entity).despawn();
-                commands.entity(asteroid_entity).despawn();
+                // 블랙홀이 같은 프레임에 이 소행성을 이미 흡수(despawn)했을 수 있으므로 try_despawn.
+                commands.entity(asteroid_entity).try_despawn();
                 score.0 += asteroid.size.score();
                 spawn_explosion(&mut commands, &assets, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
@@ -143,7 +144,8 @@ fn beam_vs_targets(
             }
             if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
                 destroyed.insert(e);
-                commands.entity(e).despawn();
+                // 블랙홀이 같은 프레임에 이 소행성을 이미 흡수했을 수 있으므로 try_despawn.
+                commands.entity(e).try_despawn();
                 score.0 += asteroid.size.score();
                 spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));

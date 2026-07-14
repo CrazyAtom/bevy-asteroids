@@ -7,7 +7,7 @@ use crate::core::config::{
     BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BLINK_INTERVAL, BLINK_TELEGRAPH_SECS,
     BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE, BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK,
     BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED,
-    GOLEM_STEER, GRAVITY_STRENGTH, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION,
+    GOLEM_STEER, GRAVITY_INTENSIFY, GRAVITY_STRENGTH, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION,
     SINGULARITY_ATTACK_INTERVAL, SINGULARITY_HEALTH_MUL, SPIRAL_ARMS, SPIRAL_STEP,
     STORM_EMP_THRESHOLD, TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
 };
@@ -94,7 +94,7 @@ pub fn boss_radius(kind: BossKind) -> f32 {
         BossKind::BlazingCore => 60.0,
         BossKind::IceGolem => 66.0,
         BossKind::TeslaCore => 56.0,
-        BossKind::SingularityCore => 52.0,
+        BossKind::SingularityCore => 66.0,
     }
 }
 
@@ -517,14 +517,26 @@ fn storm_emp(
 fn singularity_gravity_pulse(
     time: Res<Time>,
     mut bh: ResMut<BlackHoleActive>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut surging: Local<bool>,
     bosses: Query<&Boss>,
 ) {
     let has_singularity = bosses.iter().any(|b| b.kind == BossKind::SingularityCore);
-    bh.strength = if has_singularity {
-        GRAVITY_STRENGTH * gravity_boost(time.elapsed_secs())
-    } else {
-        GRAVITY_STRENGTH
-    };
+    if !has_singularity {
+        bh.strength = GRAVITY_STRENGTH;
+        *surging = false;
+        return;
+    }
+    let boost = gravity_boost(time.elapsed_secs());
+    bh.strength = GRAVITY_STRENGTH * boost;
+    // 흡인 강화가 피크로 치솟는 순간(상승 엣지) 화면을 흔들어 '중력 파동'을 체감시킨다(임팩트).
+    let near_peak = boost > 1.0 + (GRAVITY_INTENSIFY - 1.0) * 0.6;
+    if near_peak && !*surging {
+        shake.write(ShakeEvent(SHAKE_EXPLOSION * 2.0));
+        *surging = true;
+    } else if !near_peak {
+        *surging = false;
+    }
 }
 
 #[cfg(test)]
