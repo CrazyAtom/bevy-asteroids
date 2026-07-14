@@ -35,7 +35,10 @@ impl Plugin for BlackHolePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BlackHoleActive>()
             .add_systems(Startup, spawn_black_hole)
-            .add_systems(Update, (update_black_hole_visibility, consume_asteroids).run_if(in_state(GameState::Playing)))
+            // 가시성은 상태 무관 상시 실행(update_fog와 동형): GameOver에서 active=false가 되면
+            // 즉시 Hidden 처리해 블랙홀 스프라이트 잔상을 막는다.
+            .add_systems(Update, update_black_hole_visibility)
+            .add_systems(Update, consume_asteroids.run_if(in_state(GameState::Playing)))
             .add_systems(FixedUpdate, gravity_pull.run_if(in_state(GameState::Playing)));
     }
 }
