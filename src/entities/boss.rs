@@ -430,7 +430,12 @@ fn golem_phase_transition(
 
 /// 테슬라 코어 블링크: 타이머마다 화면 내 임의 위치로 순간이동. 순간이동 직전엔 예고로 축소했다가
 /// 이동 직후 원복한다.
-fn boss_blink(time: Res<Time>, mut q: Query<(&mut Transform, &mut Sprite, &mut Blink), With<Boss>>) {
+fn boss_blink(
+    time: Res<Time>,
+    mut sfx: MessageWriter<SfxEvent>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut q: Query<(&mut Transform, &mut Sprite, &mut Blink), With<Boss>>,
+) {
     use rand::RngExt;
     let base = boss_radius(BossKind::TeslaCore) * 2.0;
     for (mut tf, mut sprite, mut blink) in &mut q {
@@ -444,6 +449,9 @@ fn boss_blink(time: Res<Time>, mut q: Query<(&mut Transform, &mut Sprite, &mut B
             tf.translation.x = rng.random_range(-crate::core::config::HALF_WIDTH * 0.8..crate::core::config::HALF_WIDTH * 0.8);
             tf.translation.y = rng.random_range(0.0..crate::core::config::HALF_HEIGHT * 0.7);
             sprite.custom_size = Some(Vec2::splat(base)); // 원복
+            // 순간이동 피드백: 워프 사운드 + 소폭 흔들림(무음 예고 방지 — 적대적 리뷰 반영).
+            sfx.write(SfxEvent(Sfx::Hyperspace));
+            shake.write(ShakeEvent(SHAKE_EXPLOSION));
         }
     }
 }
