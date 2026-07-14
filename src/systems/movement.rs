@@ -8,7 +8,7 @@ use crate::core::logic::{reflect_edge, wrap_position};
 #[derive(Resource)]
 pub struct StageModifiers {
     pub wall_bounce: bool,  // 위험요소가 경계에서 반사되는가(얼음 = true)
-    pub ship_damping: f32,  // 우주선 마찰(작을수록 잘 미끄러짐)
+    pub ship_damping: f32,  // 틱당 속도에 곱하는 계수(1에 가까울수록 마찰↓ → 더 미끄러움)
 }
 
 impl Default for StageModifiers {
