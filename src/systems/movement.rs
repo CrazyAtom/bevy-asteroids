@@ -1,14 +1,30 @@
 use bevy::prelude::*;
 
-use crate::core::components::{AngularVelocity, Velocity, Wrapping};
-use crate::core::config::{HALF_HEIGHT, HALF_WIDTH};
-use crate::core::logic::wrap_position;
+use crate::core::components::{AngularVelocity, EdgeReflect, Velocity, Wrapping};
+use crate::core::config::{HALF_HEIGHT, HALF_WIDTH, SHIP_DAMPING};
+use crate::core::logic::{reflect_edge, wrap_position};
+
+/// 현재 스테이지의 물리 트위스트. 배경처럼 매 프레임 현재 테마로 동기화된다.
+#[derive(Resource)]
+pub struct StageModifiers {
+    pub wall_bounce: bool,  // 위험요소가 경계에서 반사되는가(얼음 = true)
+    pub ship_damping: f32,  // 우주선 마찰(작을수록 잘 미끄러짐)
+}
+
+impl Default for StageModifiers {
+    fn default() -> Self {
+        Self { wall_bounce: false, ship_damping: SHIP_DAMPING }
+    }
+}
 
 pub struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(FixedUpdate, ((apply_velocity, wrap_around).chain(), apply_spin));
+        app.init_resource::<StageModifiers>().add_systems(
+            FixedUpdate,
+            ((apply_velocity, wrap_around, reflect_or_wrap).chain(), apply_spin),
+        );
     }
 }
 
@@ -27,12 +43,33 @@ fn apply_spin(time: Res<Time>, mut query: Query<(&mut Transform, &AngularVelocit
     }
 }
 
-fn wrap_around(mut query: Query<&mut Transform, With<Wrapping>>) {
+fn wrap_around(mut query: Query<&mut Transform, (With<Wrapping>, Without<EdgeReflect>)>) {
     let half = Vec2::new(HALF_WIDTH, HALF_HEIGHT);
     for mut transform in &mut query {
         let wrapped = wrap_position(transform.translation.truncate(), half);
         transform.translation.x = wrapped.x;
         transform.translation.y = wrapped.y;
+    }
+}
+
+/// EdgeReflect 대상의 경계 처리. wall_bounce가 켜지면 반사, 아니면 순환(기존과 동일).
+fn reflect_or_wrap(
+    mods: Res<StageModifiers>,
+    mut query: Query<(&mut Transform, &mut Velocity), With<EdgeReflect>>,
+) {
+    let half = Vec2::new(HALF_WIDTH, HALF_HEIGHT);
+    for (mut transform, mut velocity) in &mut query {
+        let pos = transform.translation.truncate();
+        if mods.wall_bounce {
+            let (p, v) = reflect_edge(pos, velocity.0, half);
+            transform.translation.x = p.x;
+            transform.translation.y = p.y;
+            velocity.0 = v;
+        } else {
+            let w = wrap_position(pos, half);
+            transform.translation.x = w.x;
+            transform.translation.y = w.y;
+        }
     }
 }
 
@@ -84,5 +121,41 @@ mod tests {
         let t = app.world().entity(e).get::<Transform>().unwrap();
         let (_, angle) = t.rotation.to_axis_angle();
         assert!(angle > 0.0); // 회전 발생
+    }
+
+    #[test]
+    fn edge_reflect_entity_wraps_when_bounce_off() {
+        let mut app = App::new();
+        app.insert_resource(StageModifiers { wall_bounce: false, ship_damping: 0.985 });
+        let e = app
+            .world_mut()
+            .spawn((
+                Transform::from_xyz(HALF_WIDTH + 50.0, 0.0, 0.0),
+                Velocity(Vec2::new(100.0, 0.0)),
+                crate::core::components::EdgeReflect,
+            ))
+            .id();
+        app.world_mut().run_system_once(reflect_or_wrap).unwrap();
+        let t = app.world().entity(e).get::<Transform>().unwrap();
+        assert!(t.translation.x < 0.0); // 순환(반대편)
+    }
+
+    #[test]
+    fn edge_reflect_entity_bounces_when_on() {
+        let mut app = App::new();
+        app.insert_resource(StageModifiers { wall_bounce: true, ship_damping: 0.985 });
+        let e = app
+            .world_mut()
+            .spawn((
+                Transform::from_xyz(HALF_WIDTH + 50.0, 0.0, 0.0),
+                Velocity(Vec2::new(100.0, 0.0)),
+                crate::core::components::EdgeReflect,
+            ))
+            .id();
+        app.world_mut().run_system_once(reflect_or_wrap).unwrap();
+        let t = app.world().entity(e).get::<Transform>().unwrap();
+        let v = app.world().entity(e).get::<Velocity>().unwrap();
+        assert!((t.translation.x - HALF_WIDTH).abs() < 1e-3); // 경계로 클램프
+        assert!(v.0.x < 0.0); // 반사
     }
 }

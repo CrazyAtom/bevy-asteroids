@@ -13,6 +13,10 @@ pub const SHIP_DAMPING: f32 = 0.985;
 // 우주선 최고 속도 상한(units/s).
 pub const SHIP_MAX_SPEED: f32 = 450.0;
 pub const SHIP_BRAKE_RATE: f32 = 3.0; // 브레이크 감쇠율(1/s)
+// 얼음 테마 감쇠(기본보다 마찰↓ → 더 미끄러움).
+// TODO(Task 5): stage.rs의 stage_modifiers에서 실사용되면 allow 제거.
+#[allow(dead_code)]
+pub const SHIP_DAMPING_ICE: f32 = 0.997;
 
 pub const BULLET_SPEED: f32 = 620.0;
 pub const BULLET_LIFETIME_SECS: f32 = 1.2;

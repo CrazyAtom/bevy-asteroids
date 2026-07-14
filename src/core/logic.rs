@@ -60,8 +60,6 @@ pub fn wrap_position(pos: Vec2, half: Vec2) -> Vec2 {
 
 /// 경계를 넘은 좌표를 경계로 클램프하고 해당 축 속도를 안쪽으로 반전한다(벽 반사).
 /// 두 축을 독립 처리하며, 경계 안의 좌표는 위치·속도 모두 불변.
-// TODO(Task 3): reflect_or_wrap 시스템에서 실사용되면 allow 제거.
-#[allow(dead_code)]
 pub fn reflect_edge(pos: Vec2, vel: Vec2, half: Vec2) -> (Vec2, Vec2) {
     let mut p = pos;
     let mut v = vel;

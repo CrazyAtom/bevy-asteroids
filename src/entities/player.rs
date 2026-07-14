@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, Velocity, Wrapping};
 use crate::core::config::{
-    HYPERSPACE_COOLDOWN_SECS, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_DAMPING, SHIP_MAX_SPEED,
+    HYPERSPACE_COOLDOWN_SECS, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_MAX_SPEED,
     SHIP_ROTATION_SPEED, SHIP_THRUST, SHIP_TURN_ACCEL, SHIP_TURN_MIN, SPAWN_INVINCIBILITY_SECS,
     STARTING_SPECIAL_CHARGES, Z_ENTITY, Z_FLAME,
 };
@@ -12,6 +12,7 @@ use crate::entities::powerup::SpecialWeaponKind;
 use crate::entities::special_weapon::SpecialWeapon;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
+use crate::systems::movement::StageModifiers;
 
 #[derive(Component)]
 pub struct Player;
@@ -183,9 +184,9 @@ fn player_input(
 /// 우주선 전용 감속(마찰)과 최고 속도 제한. FixedUpdate에서 매 틱 실행돼
 /// 추진을 멈추면 속도가 서서히 줄어 정지하고, 속도가 상한을 넘지 않게 한다.
 /// 소행성·총알에는 적용되지 않으므로 그들은 등속을 유지한다.
-fn apply_ship_damping(mut query: Query<&mut Velocity, With<Player>>) {
+fn apply_ship_damping(mods: Res<StageModifiers>, mut query: Query<&mut Velocity, With<Player>>) {
     for mut velocity in &mut query {
-        velocity.0 *= SHIP_DAMPING;
+        velocity.0 *= mods.ship_damping;
         velocity.0 = velocity.0.clamp_length_max(SHIP_MAX_SPEED);
     }
 }
@@ -398,6 +399,7 @@ mod tests {
     #[test]
     fn ship_damping_reduces_speed_but_keeps_direction() {
         let mut app = App::new();
+        app.insert_resource(crate::systems::movement::StageModifiers::default());
         let e = app
             .world_mut()
             .spawn((Player, Velocity(Vec2::new(200.0, 0.0))))
@@ -412,6 +414,7 @@ mod tests {
     #[test]
     fn ship_speed_is_capped_at_max() {
         let mut app = App::new();
+        app.insert_resource(crate::systems::movement::StageModifiers::default());
         let e = app
             .world_mut()
             .spawn((Player, Velocity(Vec2::new(10_000.0, 0.0))))
