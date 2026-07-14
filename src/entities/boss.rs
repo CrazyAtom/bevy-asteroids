@@ -576,7 +576,12 @@ fn singularity_lunge(
                 let dir = player_pos
                     .map(|pp| (pp - home).normalize_or_zero())
                     .unwrap_or(Vec2::NEG_Y);
-                lunge.target = dir * crate::core::config::LUNGE_DIST;
+                // 목적지를 화면 안(보스 반경 여유 70)으로 클램프해 상단 등으로 돌출하지 않게 한다.
+                let hw = crate::core::config::HALF_WIDTH - 70.0;
+                let hh = crate::core::config::HALF_HEIGHT - 70.0;
+                let dest = (home + dir * crate::core::config::LUNGE_DIST)
+                    .clamp(Vec2::new(-hw, -hh), Vec2::new(hw, hh));
+                lunge.target = dest - home;
                 lunge.charging = true;
             }
             let p = (f - 0.65) / 0.35;
