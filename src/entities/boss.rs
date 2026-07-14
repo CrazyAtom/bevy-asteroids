@@ -87,7 +87,7 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
     let r = boss_radius(kind);
     let mut e = commands.spawn((
         Boss { kind, health: hp, max_health: hp, phase: 0 },
-        BossAttack { timer: Timer::from_seconds(attack_interval(kind), TimerMode::Repeating) },
+        BossAttack { timer: Timer::from_seconds(attack_interval(kind), TimerMode::Repeating), shots: 0 },
         Sprite {
             image: boss_image(kind, assets),
             custom_size: Some(Vec2::splat(r * 2.0)),
@@ -113,9 +113,15 @@ fn attack_interval(kind: BossKind) -> f32 {
     }
 }
 
+/// 골렘 공격 교대: 짝수 발 = 팔 휘두르기(부채꼴 파편), 홀수 발 = 내려찍기(방사 탄).
+pub fn golem_attack_is_sweep(shots: u32) -> bool {
+    shots.is_multiple_of(2)
+}
+
 #[derive(Component)]
 pub struct BossAttack {
     pub timer: Timer,
+    pub shots: u32,
 }
 
 pub struct BossPlugin;
@@ -169,6 +175,8 @@ fn boss_attack(
         if !atk.timer.is_finished() {
             continue;
         }
+        let shots = atk.shots;
+        atk.shots = atk.shots.wrapping_add(1);
         let pos = tf.translation.truncate();
         match boss.kind {
             // 모암: 소행성 파편 방사
@@ -201,13 +209,26 @@ fn boss_attack(
                     spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
                 }
             }
-            // 얼음 골렘(기본): 방사형 얼음 탄(Task 6에서 팔 휘두르기/내려찍기로 확장).
+            // 얼음 골렘: 팔 휘두르기(부채꼴 파편) ↔ 내려찍기(방사 탄) 교대.
             BossKind::IceGolem => {
-                let n = 12;
-                for i in 0..n {
-                    let ang = i as f32 / n as f32 * std::f32::consts::TAU;
-                    let d = Vec2::new(ang.cos(), ang.sin());
-                    spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                if golem_attack_is_sweep(shots) {
+                    // 팔 휘두르기: 조준 방향 ±35° 부채꼴로 소형 소행성 파편 5개(벽 반사).
+                    let base = player_pos
+                        .map(|pp| aim_direction(pos, pp))
+                        .unwrap_or(Vec2::NEG_Y);
+                    for a in [-0.61f32, -0.305, 0.0, 0.305, 0.61] {
+                        let d = (Quat::from_rotation_z(a) * base.extend(0.0)).truncate();
+                        let size = AsteroidSize::Small;
+                        spawn_asteroid(&mut commands, &assets, size, pos, d * random_velocity(size).length());
+                    }
+                } else {
+                    // 내려찍기: 방사형 얼음 탄 12발.
+                    let n = 12;
+                    for i in 0..n {
+                        let ang = i as f32 / n as f32 * std::f32::consts::TAU;
+                        let d = Vec2::new(ang.cos(), ang.sin());
+                        spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                    }
                 }
             }
         }
@@ -299,5 +320,12 @@ mod tests {
         assert_eq!(boss_for_theme(ThemeId::FrozenField), BossKind::IceGolem);
         // 같은 사이클에서 골렘이 모함(기준)보다 체력이 높다.
         assert!(boss_max_health(BossKind::IceGolem, 0) > boss_max_health(BossKind::Mothership, 0));
+    }
+
+    #[test]
+    fn golem_alternates_sweep_and_slam() {
+        assert!(golem_attack_is_sweep(0)); // 첫 발 = 팔 휘두르기
+        assert!(!golem_attack_is_sweep(1)); // 다음 = 내려찍기
+        assert!(golem_attack_is_sweep(2));
     }
 }
