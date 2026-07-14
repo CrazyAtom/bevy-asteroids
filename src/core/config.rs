@@ -114,3 +114,8 @@ pub const STORM_PERIOD: f32 = 7.0;       // 폭풍 피크 주기(초)
 pub const FOG_VISION_MIN: f32 = 0.6;     // 피크 시 시야 배율(1.0=평소)
 pub const Z_FOG: f32 = 20.0;             // 안개 오버레이 Z(모든 월드 스프라이트 위)
 pub const FOG_BASE_SIZE: f32 = 5200.0;   // 안개 오버레이 기본 크기(px). 최소 배율에서도 화면 구석까지 덮음
+
+// Phase 7 — 테슬라 코어 보스
+pub const TESLA_HEALTH_MUL: f32 = 1.1;
+pub const TESLA_ATTACK_INTERVAL: f32 = 1.8;
+pub const BLINK_INTERVAL: f32 = 3.0; // 순간이동 주기(초)
