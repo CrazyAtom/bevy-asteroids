@@ -334,4 +334,22 @@ mod tests {
             assert!(s >= crate::core::config::FOG_VISION_MIN - 1e-6);
         }
     }
+
+    #[test]
+    fn storm_pulse_exact_peak_and_troughs() {
+        // STORM_PERIOD=7 → t=1.75는 위상 1/4(sin=1) → 피크 1.0
+        assert!((storm_pulse(1.75) - 1.0).abs() < 1e-4);
+        // t=0은 sin=0 → 0.0
+        assert!(storm_pulse(0.0).abs() < 1e-6);
+        // t=5.25는 위상 3/4(sin=-1) → max(0)로 0.0.
+        // (max(0.0)을 abs()로 바꾸면 1.0이 되어 이 단정이 실패 → 변형 검출)
+        assert!(storm_pulse(5.25).abs() < 1e-6);
+    }
+
+    #[test]
+    fn storm_vision_scale_hits_min_at_peak_and_one_at_trough() {
+        // 피크(t=1.75) → FOG_VISION_MIN, 평소(t=0) → 1.0
+        assert!((storm_vision_scale(1.75) - crate::core::config::FOG_VISION_MIN).abs() < 1e-4);
+        assert!((storm_vision_scale(0.0) - 1.0).abs() < 1e-6);
+    }
 }
