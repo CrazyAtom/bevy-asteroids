@@ -40,6 +40,7 @@ fn main() {
         .add_plugins(systems::collision::CollisionPlugin)
         .add_plugins(fx::effects::EffectsPlugin)
         .add_plugins(fx::background::BackgroundPlugin)
+        .add_plugins(fx::fog::FogPlugin)
         .add_plugins(fx::shake::ShakePlugin)
         .add_plugins(fx::audio::AudioPlugin)
         .add_plugins(entities::ufo::UfoPlugin)

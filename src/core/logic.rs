@@ -143,6 +143,18 @@ pub fn segment_circle_hit(origin: Vec2, dir: Vec2, length: f32, half_width: f32,
     closest.distance(center) <= half_width + radius
 }
 
+/// 폭풍 강도 펄스: 평소 0, 주기(STORM_PERIOD)마다 부드럽게 1로 치솟았다 가라앉음. [0,1].
+pub fn storm_pulse(t: f32) -> f32 {
+    use std::f32::consts::TAU;
+    let phase = t / crate::core::config::STORM_PERIOD;
+    (TAU * phase).sin().max(0.0).powi(4)
+}
+
+/// 시야 배율: 평소 1.0, 폭풍 피크에서 FOG_VISION_MIN까지 축소. [FOG_VISION_MIN, 1.0].
+pub fn storm_vision_scale(t: f32) -> f32 {
+    1.0 - (1.0 - crate::core::config::FOG_VISION_MIN) * storm_pulse(t)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,5 +309,29 @@ mod tests {
         let (p, v) = reflect_edge(Vec2::new(10.0, -20.0), Vec2::new(3.0, 4.0), half);
         assert_eq!(p, Vec2::new(10.0, -20.0));
         assert_eq!(v, Vec2::new(3.0, 4.0));
+    }
+
+    #[test]
+    fn storm_pulse_in_unit_range_with_a_peak() {
+        let mut saw_peak = false;
+        for i in 0..200 {
+            let t = i as f32 * 0.05;
+            let p = storm_pulse(t);
+            assert!((0.0..=1.0).contains(&p));
+            if p > 0.5 {
+                saw_peak = true;
+            }
+        }
+        assert!(saw_peak, "주기 안에 폭풍 피크가 존재해야 한다");
+    }
+
+    #[test]
+    fn storm_vision_scale_between_min_and_one() {
+        for i in 0..200 {
+            let t = i as f32 * 0.05;
+            let s = storm_vision_scale(t);
+            assert!(s <= 1.0 + 1e-6);
+            assert!(s >= crate::core::config::FOG_VISION_MIN - 1e-6);
+        }
     }
 }

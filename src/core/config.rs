@@ -108,3 +108,9 @@ pub const GOLEM_ATTACK_INTERVAL: f32 = 2.5;
 pub const BOSS_TRACK: f32 = 0.35;          // 비-골렘 보스가 플레이어 x를 추적하는 블렌드(0=고정, 1=완전추적)
 pub const GOLEM_STEER: f32 = 1.5;          // 골렘이 플레이어 쪽으로 조향하는 초당 비율
 pub const BOSS_ENTRANCE_SHAKE: f32 = 0.8;  // 보스 등장 시 화면 흔들림 강도
+
+// Phase 7 — 전자기폭풍(안개 시야 제한)
+pub const STORM_PERIOD: f32 = 7.0;       // 폭풍 피크 주기(초)
+pub const FOG_VISION_MIN: f32 = 0.6;     // 피크 시 시야 배율(1.0=평소)
+pub const Z_FOG: f32 = 20.0;             // 안개 오버레이 Z(모든 월드 스프라이트 위)
+pub const FOG_BASE_SIZE: f32 = 5200.0;   // 안개 오버레이 기본 크기(px). 최소 배율에서도 화면 구석까지 덮음

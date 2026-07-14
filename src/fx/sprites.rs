@@ -26,6 +26,7 @@ pub struct SpriteAssets {
     pub bg_flare: Handle<Image>,
     pub bg_ice: Handle<Image>,
     pub boss_ice_golem: Handle<Image>,
+    pub fog: Handle<Image>,
     pub powerup: [Handle<Image>; 5], // Shield, RapidFire, Spread, ExtraLife, SpecialWeapon
     pub explosion_frames: Vec<Handle<Image>>,
 }
@@ -73,6 +74,7 @@ fn build_sprite_assets(asset_server: &AssetServer) -> SpriteAssets {
         bg_flare: asset_server.load("sprites/bg_flare.png"),
         bg_ice: asset_server.load("sprites/bg_ice.png"),
         boss_ice_golem: asset_server.load("sprites/boss_ice_golem.png"),
+        fog: asset_server.load("sprites/fog.png"),
         powerup: [
             asset_server.load("sprites/powerup_shield.png"),
             asset_server.load("sprites/powerup_rapid.png"),
@@ -110,6 +112,7 @@ pub fn dummy_sprite_assets() -> SpriteAssets {
         bg_flare: h.clone(),
         bg_ice: h.clone(),
         boss_ice_golem: h.clone(),
+        fog: h.clone(),
         powerup: [h.clone(), h.clone(), h.clone(), h.clone(), h.clone()],
         explosion_frames: vec![h.clone(); 6],
     }
