@@ -119,3 +119,5 @@ pub const FOG_BASE_SIZE: f32 = 5200.0;   // 안개 오버레이 기본 크기(px
 pub const TESLA_HEALTH_MUL: f32 = 1.1;
 pub const TESLA_ATTACK_INTERVAL: f32 = 1.8;
 pub const BLINK_INTERVAL: f32 = 3.0; // 순간이동 주기(초)
+pub const STORM_EMP_THRESHOLD: f32 = 0.6; // storm_pulse가 이 값을 상향 돌파하면 EMP 발동
+pub const BLINK_TELEGRAPH_SECS: f32 = 0.4; // 블링크 직전 예고(축소) 시간
