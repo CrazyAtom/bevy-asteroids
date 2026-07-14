@@ -4,9 +4,10 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, EdgeReflect, Velocity};
 use crate::core::config::{
-    BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BOSS_BASE_HEALTH, BOSS_HEALTH_PER_CYCLE,
-    BOSS_SCORE_BONUS, BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL,
-    GOLEM_DRIFT_SPEED, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION, UFO_BULLET_SPEED, Z_ENTITY,
+    BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE,
+    BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK, BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES,
+    GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED, GOLEM_STEER, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION,
+    UFO_BULLET_SPEED, Z_ENTITY,
 };
 use crate::core::logic::{aim_direction, circles_overlap, segment_circle_hit, AsteroidSize};
 use crate::core::config::STARTING_LIVES;
@@ -75,10 +76,10 @@ pub fn boss_image(kind: BossKind, assets: &SpriteAssets) -> Handle<Image> {
 
 pub fn boss_radius(kind: BossKind) -> f32 {
     match kind {
-        BossKind::MotherRock => 55.0,
-        BossKind::Mothership => 70.0,
-        BossKind::BlazingCore => 45.0,
-        BossKind::IceGolem => 50.0,
+        BossKind::MotherRock => 72.0,
+        BossKind::Mothership => 90.0,
+        BossKind::BlazingCore => 60.0,
+        BossKind::IceGolem => 66.0,
     }
 }
 
@@ -154,35 +155,72 @@ impl Plugin for BossPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (boss_movement, boss_attack, boss_combat, golem_phase_transition)
+            (boss_movement, boss_attack, boss_combat, golem_phase_transition, boss_entrance)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-/// 보스 종류별 이동 패턴.
-fn boss_movement(time: Res<Time>, mut q: Query<(&Boss, &mut Transform)>) {
+/// 보스 x를 패턴 위치에서 플레이어 x 쪽으로 factor만큼 당긴다(수평 추적). 플레이어가 없으면 패턴 유지.
+pub fn track(pattern_x: f32, player_x: Option<f32>, factor: f32) -> f32 {
+    match player_x {
+        Some(px) => pattern_x + (px - pattern_x) * factor,
+        None => pattern_x,
+    }
+}
+
+/// 보스 종류별 이동 패턴 + 플레이어 수평 추적(위협감). 골렘은 속도를 플레이어 쪽으로 약간 조향한다.
+fn boss_movement(
+    time: Res<Time>,
+    players: Query<&Transform, (With<Player>, Without<Boss>)>,
+    mut q: Query<(&Boss, &mut Transform, Option<&mut Velocity>)>,
+) {
     let t = time.elapsed_secs();
-    for (boss, mut tf) in &mut q {
+    let dt = time.delta_secs();
+    let player_pos = players.single().ok().map(|p| p.translation.truncate());
+    let player_x = player_pos.map(|p| p.x);
+    for (boss, mut tf, vel) in &mut q {
         match boss.kind {
-            // 모암: 느린 배회
+            // 모암: 느린 배회 + 수평 추적
             BossKind::MotherRock => {
-                tf.translation.x = (t * 0.3).sin() * 250.0;
+                tf.translation.x = track((t * 0.3).sin() * 250.0, player_x, BOSS_TRACK);
                 tf.translation.y = 110.0 + (t * 0.4).sin() * 60.0;
             }
-            // 모함: 상단 좌우 스윕
+            // 모함: 상단 좌우 스윕 + 수평 추적
             BossKind::Mothership => {
-                tf.translation.x = (t * 0.8).sin() * 300.0;
+                tf.translation.x = track((t * 0.8).sin() * 300.0, player_x, BOSS_TRACK);
                 tf.translation.y = 150.0;
             }
-            // 화염 코어: 상단 고정 + 약한 부유
+            // 화염 코어: 상단 부유 + 수평 추적
             BossKind::BlazingCore => {
-                tf.translation.x = (t * 1.2).sin() * 30.0;
+                tf.translation.x = track((t * 1.2).sin() * 30.0, player_x, BOSS_TRACK);
                 tf.translation.y = 150.0 + (t * 2.0).sin() * 15.0;
             }
-            // 얼음 골렘: Velocity + reflect_or_wrap로 드리프트/반사(여기선 조작 없음).
-            BossKind::IceGolem => {}
+            // 얼음 골렘: 드리프트/반사 + 플레이어 쪽으로 약한 조향(유도).
+            BossKind::IceGolem => {
+                if let (Some(mut v), Some(pp)) = (vel, player_pos) {
+                    let desired = (pp - tf.translation.truncate()).normalize_or_zero();
+                    if desired != Vec2::ZERO {
+                        let speed = v.0.length();
+                        let cur = v.0.normalize_or_zero();
+                        let steered = cur.lerp(desired, (GOLEM_STEER * dt).min(1.0)).normalize_or_zero();
+                        v.0 = steered * speed;
+                    }
+                }
+            }
         }
+    }
+}
+
+/// 보스 등장 임팩트: 스폰되는 순간 강한 화면 흔들림 + 굉음으로 위압감을 준다.
+fn boss_entrance(
+    new_bosses: Query<(), Added<Boss>>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut sfx: MessageWriter<SfxEvent>,
+) {
+    for _ in &new_bosses {
+        shake.write(ShakeEvent(BOSS_ENTRANCE_SHAKE));
+        sfx.write(SfxEvent(Sfx::Explosion));
     }
 }
 
@@ -402,5 +440,12 @@ mod tests {
         assert!(golem_scale(2) < golem_scale(0)); // 작아짐
         assert!(golem_speed_mul(2) > golem_speed_mul(0)); // 빨라짐
         assert!(golem_attack_mul(2) < golem_attack_mul(0)); // 주기 짧아짐
+    }
+
+    #[test]
+    fn track_pulls_toward_player_and_holds_without() {
+        assert!((track(0.0, Some(100.0), 0.5) - 50.0).abs() < 1e-4); // 절반 당김
+        assert_eq!(track(30.0, None, 0.5), 30.0); // 플레이어 없으면 패턴 유지
+        assert_eq!(track(30.0, Some(100.0), 0.0), 30.0); // factor 0이면 고정
     }
 }

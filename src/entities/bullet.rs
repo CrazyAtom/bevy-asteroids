@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::core::components::{Collider, Velocity, Wrapping};
+use crate::core::components::{Collider, Velocity};
 use crate::core::config::{
     BULLET_COLLIDER_RADIUS, BULLET_LIFETIME_SECS, BULLET_SPEED, ENEMY_BULLET_COLLIDER_RADIUS,
     FIRE_INTERVAL, RAPID_FIRE_INTERVAL, SPREAD_ANGLE, UFO_BULLET_LIFETIME_SECS, Z_ENTITY,
@@ -110,7 +110,6 @@ fn fire_bullet(
             },
             Velocity(dir * BULLET_SPEED),
             Collider { radius: BULLET_COLLIDER_RADIUS },
-            Wrapping,
             GameplayEntity,
         ));
     }
