@@ -170,7 +170,7 @@ fn ufo_wobble(time: Res<Time>, mut query: Query<&mut Transform, With<Ufo>>) {
 fn despawn_offscreen_ufo(mut commands: Commands, query: Query<(Entity, &Transform), With<Ufo>>) {
     for (entity, transform) in &query {
         if transform.translation.x.abs() > HALF_WIDTH + 60.0 {
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
         }
     }
 }

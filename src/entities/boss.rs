@@ -388,7 +388,7 @@ fn boss_combat(
         let mut defeated = false;
         for (be, btf, bcol) in &bullets {
             if circles_overlap(bpos, boss_col.radius, btf.translation.truncate(), bcol.radius) {
-                commands.entity(be).despawn();
+                commands.entity(be).try_despawn();
                 if apply_boss_damage(&mut boss, BULLET_BOSS_DAMAGE) {
                     defeated = true;
                     break;

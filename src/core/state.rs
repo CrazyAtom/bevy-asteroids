@@ -54,7 +54,8 @@ pub(crate) fn reset_game(
 
 fn despawn_gameplay_entities(mut commands: Commands, query: Query<Entity, With<GameplayEntity>>) {
     for entity in &query {
-        commands.entity(entity).despawn();
+        // 같은 프레임에 이미 despawn된 엔티티(충돌·수명 등)가 섞일 수 있으므로 try_despawn.
+        commands.entity(entity).try_despawn();
     }
 }
 

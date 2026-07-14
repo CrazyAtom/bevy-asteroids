@@ -93,7 +93,7 @@ fn powerup_lifetime(mut commands: Commands, time: Res<Time>, mut q: Query<(Entit
     for (entity, mut p) in &mut q {
         p.life.tick(time.delta());
         if p.life.is_finished() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
         }
     }
 }
@@ -178,7 +178,7 @@ fn collect_powerup(
                     }
                 }
             }
-            commands.entity(powerup_entity).despawn();
+            commands.entity(powerup_entity).try_despawn();
             sfx.write(SfxEvent(Sfx::Pickup));
         }
     }

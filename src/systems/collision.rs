@@ -58,7 +58,7 @@ fn bullet_vs_asteroid(
                 asteroid_col.radius,
             ) {
                 destroyed.insert(asteroid_entity);
-                commands.entity(bullet_entity).despawn();
+                commands.entity(bullet_entity).try_despawn();
                 // 블랙홀이 같은 프레임에 이 소행성을 이미 흡수(despawn)했을 수 있으므로 try_despawn.
                 commands.entity(asteroid_entity).try_despawn();
                 score.0 += asteroid.size.score();
@@ -107,8 +107,8 @@ fn bullet_vs_ufo(
                 ufo_col.radius,
             ) {
                 destroyed.insert(ufo_entity);
-                commands.entity(bullet_entity).despawn();
-                commands.entity(ufo_entity).despawn();
+                commands.entity(bullet_entity).try_despawn();
+                commands.entity(ufo_entity).try_despawn();
                 score.0 += ufo.size.score();
                 spawn_explosion(&mut commands, &assets, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
@@ -157,7 +157,7 @@ fn beam_vs_targets(
             }
             if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
                 destroyed.insert(e);
-                commands.entity(e).despawn();
+                commands.entity(e).try_despawn();
                 score.0 += ufo.size.score();
                 spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));
@@ -217,7 +217,7 @@ fn player_damage(
     if !hit {
         for (b_entity, b_tf, b_col) in &enemy_bullets {
             if circles_overlap(ppos, pr, b_tf.translation.truncate(), b_col.radius) {
-                commands.entity(b_entity).despawn();
+                commands.entity(b_entity).try_despawn();
                 hit = true;
                 break;
             }

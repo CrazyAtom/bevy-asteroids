@@ -66,7 +66,7 @@ fn enemy_bullet_lifetime(
     for (entity, mut bullet) in &mut query {
         bullet.life.tick(time.delta());
         if bullet.life.is_finished() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
         }
     }
 }
@@ -124,7 +124,7 @@ fn bullet_lifetime(
     for (entity, mut bullet) in &mut query {
         bullet.life.tick(time.delta());
         if bullet.life.is_finished() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
         }
     }
 }
