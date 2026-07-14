@@ -413,4 +413,16 @@ mod tests {
         }
         assert!(saw_peak, "주기 안에 흡인 강화 피크가 존재해야 한다");
     }
+
+    #[test]
+    fn gravity_boost_exact_peak_and_troughs() {
+        use crate::core::config::GRAVITY_INTENSIFY;
+        // PERIOD=6 → t=1.5는 위상 1/4(sin=1) → 피크 = INTENSIFY
+        assert!((gravity_boost(1.5) - GRAVITY_INTENSIFY).abs() < 1e-4);
+        // t=0은 sin=0 → 1.0
+        assert!((gravity_boost(0.0) - 1.0).abs() < 1e-6);
+        // t=4.5는 위상 3/4(sin=-1) → max(0)로 1.0.
+        // (max(0.0)을 abs()로 바꾸면 INTENSIFY가 되어 이 단정이 실패 → 변형 검출)
+        assert!((gravity_boost(4.5) - 1.0).abs() < 1e-6);
+    }
 }
