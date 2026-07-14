@@ -58,6 +58,30 @@ pub fn wrap_position(pos: Vec2, half: Vec2) -> Vec2 {
     p
 }
 
+/// 경계를 넘은 좌표를 경계로 클램프하고 해당 축 속도를 안쪽으로 반전한다(벽 반사).
+/// 두 축을 독립 처리하며, 경계 안의 좌표는 위치·속도 모두 불변.
+// TODO(Task 3): reflect_or_wrap 시스템에서 실사용되면 allow 제거.
+#[allow(dead_code)]
+pub fn reflect_edge(pos: Vec2, vel: Vec2, half: Vec2) -> (Vec2, Vec2) {
+    let mut p = pos;
+    let mut v = vel;
+    if p.x > half.x {
+        p.x = half.x;
+        v.x = -v.x.abs();
+    } else if p.x < -half.x {
+        p.x = -half.x;
+        v.x = v.x.abs();
+    }
+    if p.y > half.y {
+        p.y = half.y;
+        v.y = -v.y.abs();
+    } else if p.y < -half.y {
+        p.y = -half.y;
+        v.y = v.y.abs();
+    }
+    (p, v)
+}
+
 /// 두 원이 겹치는지 판정 (제곱 거리 비교로 sqrt 회피).
 pub fn circles_overlap(a: Vec2, ra: f32, b: Vec2, rb: f32) -> bool {
     let r = ra + rb;
@@ -250,5 +274,30 @@ mod tests {
         assert!(!segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(200.0, 100.0), 20.0));
         // 뒤쪽(반대 방향)은 안 맞음
         assert!(!segment_circle_hit(o, dir, 2000.0, 11.0, Vec2::new(0.0, -100.0), 20.0));
+    }
+
+    #[test]
+    fn reflect_bounces_off_right_edge_and_flips_x() {
+        let half = Vec2::new(640.0, 360.0);
+        let (p, v) = reflect_edge(Vec2::new(700.0, 0.0), Vec2::new(50.0, 10.0), half);
+        assert!((p.x - 640.0).abs() < 1e-4); // 경계로 클램프
+        assert!(v.x < 0.0);                  // x 속도 반전(안쪽으로)
+        assert!((v.y - 10.0).abs() < 1e-4);  // y는 불변
+    }
+
+    #[test]
+    fn reflect_bounces_off_bottom_edge_and_flips_y() {
+        let half = Vec2::new(640.0, 360.0);
+        let (p, v) = reflect_edge(Vec2::new(0.0, -400.0), Vec2::new(0.0, -20.0), half);
+        assert!((p.y + 360.0).abs() < 1e-4);
+        assert!(v.y > 0.0);
+    }
+
+    #[test]
+    fn reflect_leaves_inside_point_unchanged() {
+        let half = Vec2::new(640.0, 360.0);
+        let (p, v) = reflect_edge(Vec2::new(10.0, -20.0), Vec2::new(3.0, 4.0), half);
+        assert_eq!(p, Vec2::new(10.0, -20.0));
+        assert_eq!(v, Vec2::new(3.0, 4.0));
     }
 }

@@ -13,3 +13,10 @@ pub struct Collider {
 
 #[derive(Component)]
 pub struct Wrapping;
+
+/// 경계에서 반사(벽 튕김) 대상임을 표시하는 마커. 실제 반사/순환 여부는
+/// `StageModifiers.wall_bounce`가 결정한다(얼음 스테이지에서만 반사).
+// TODO(Task 3): reflect_or_wrap/소행성 스폰에서 실사용되면 allow 제거.
+#[allow(dead_code)]
+#[derive(Component)]
+pub struct EdgeReflect;
