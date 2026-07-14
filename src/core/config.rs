@@ -95,7 +95,7 @@ pub const CYCLE_LEN: usize = 3;     // 한 사이클의 스테이지 수(= 무�
 pub const WAVES_PER_STAGE: u32 = 3; // 스테이지당 보스 전 웨이브 수
 pub const BULLET_BOSS_DAMAGE: f32 = 1.0;
 pub const BEAM_BOSS_DAMAGE: f32 = 4.0;
-pub const BOSS_BASE_HEALTH: f32 = 30.0;      // 기준 체력
+pub const BOSS_BASE_HEALTH: f32 = 40.0;      // 기준 체력(위협감 상향)
 pub const BOSS_HEALTH_PER_CYCLE: f32 = 14.0; // 사이클마다 증가
 pub const BOSS_SCORE_BONUS: u32 = 2000;      // 격파 보너스
 
@@ -103,3 +103,8 @@ pub const BOSS_SCORE_BONUS: u32 = 2000;      // 격파 보너스
 pub const ICE_GOLEM_HEALTH_MUL: f32 = 1.4; // 느린 대신 높은 체력
 pub const GOLEM_DRIFT_SPEED: f32 = 55.0;   // 느린 드리프트 속도(u/s)
 pub const GOLEM_ATTACK_INTERVAL: f32 = 2.5;
+
+// Phase 6 — 보스 임팩트(위협감)
+pub const BOSS_TRACK: f32 = 0.35;          // 비-골렘 보스가 플레이어 x를 추적하는 블렌드(0=고정, 1=완전추적)
+pub const GOLEM_STEER: f32 = 1.5;          // 골렘이 플레이어 쪽으로 조향하는 초당 비율
+pub const BOSS_ENTRANCE_SHAKE: f32 = 0.8;  // 보스 등장 시 화면 흔들림 강도
