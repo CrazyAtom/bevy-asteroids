@@ -1,19 +1,22 @@
 use bevy::prelude::*;
 
-use crate::core::config::{CYCLE_LEN, STARTING_LIVES, WAVES_PER_STAGE};
+use crate::core::config::{CYCLE_LEN, SHIP_DAMPING_ICE, STARTING_LIVES, WAVES_PER_STAGE};
 use crate::core::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
 use crate::core::state::{GameState, Lives};
 use crate::entities::asteroid::{random_spawn_position, random_velocity, spawn_asteroid, Asteroid};
 use crate::fx::sprites::SpriteAssets;
+use crate::systems::movement::StageModifiers;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ThemeId {
     AsteroidBelt,
     AlienFleet,
     SolarFlare,
+    FrozenField,
 }
 
-pub const THEME_POOL: [ThemeId; 3] = [ThemeId::AsteroidBelt, ThemeId::AlienFleet, ThemeId::SolarFlare];
+pub const THEME_POOL: [ThemeId; 4] =
+    [ThemeId::AsteroidBelt, ThemeId::AlienFleet, ThemeId::SolarFlare, ThemeId::FrozenField];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum StagePhase {
@@ -94,6 +97,7 @@ pub fn theme_params(t: ThemeId) -> ThemeParams {
         ThemeId::AsteroidBelt => ThemeParams { count_mul: 1.15, speed_mul: 1.0, ufo_interval_mul: 1.0 },
         ThemeId::AlienFleet => ThemeParams { count_mul: 1.0, speed_mul: 1.0, ufo_interval_mul: 0.8 },
         ThemeId::SolarFlare => ThemeParams { count_mul: 1.0, speed_mul: 1.2, ufo_interval_mul: 1.0 },
+        ThemeId::FrozenField => ThemeParams { count_mul: 0.9, speed_mul: 0.95, ufo_interval_mul: 1.0 },
     }
 }
 
@@ -111,7 +115,23 @@ pub fn theme_name(t: ThemeId) -> &'static str {
         ThemeId::AsteroidBelt => "ASTEROID BELT",
         ThemeId::AlienFleet => "ALIEN FLEET",
         ThemeId::SolarFlare => "SOLAR FLARE",
+        ThemeId::FrozenField => "FROZEN FIELD",
     }
+}
+
+/// 테마별 물리 트위스트. 얼음만 반사+미끄럼, 그 외는 기본값.
+pub fn stage_modifiers(theme: ThemeId) -> StageModifiers {
+    match theme {
+        ThemeId::FrozenField => StageModifiers { wall_bounce: true, ship_damping: SHIP_DAMPING_ICE },
+        _ => StageModifiers::default(),
+    }
+}
+
+/// 배경 동기화와 동일하게, 매 프레임 현재 테마로 StageModifiers를 맞춘다(상태 비의존).
+fn sync_stage_modifiers(prog: Res<Progression>, mut mods: ResMut<StageModifiers>) {
+    let want = stage_modifiers(prog.current_theme());
+    mods.wall_bounce = want.wall_bounce;
+    mods.ship_damping = want.ship_damping;
 }
 
 pub struct StagePlugin;
@@ -122,7 +142,10 @@ impl Plugin for StagePlugin {
             OnEnter(GameState::Playing),
             start_first_stage.after(crate::core::state::reset_game),
         )
-        .add_systems(Update, stage_control.run_if(in_state(GameState::Playing)));
+        .add_systems(
+            Update,
+            (stage_control, sync_stage_modifiers).run_if(in_state(GameState::Playing)),
+        );
     }
 }
 
@@ -230,5 +253,19 @@ mod tests {
         assert!(theme_params(ThemeId::AsteroidBelt).count_mul > 1.0);
         assert!(theme_params(ThemeId::SolarFlare).speed_mul > 1.0);
         assert!(theme_params(ThemeId::AlienFleet).ufo_interval_mul < 1.0);
+    }
+
+    #[test]
+    fn frozen_field_params_and_modifiers() {
+        let p = theme_params(ThemeId::FrozenField);
+        assert!(p.count_mul < 1.0 && p.speed_mul < 1.0);
+        let m = stage_modifiers(ThemeId::FrozenField);
+        assert!(m.wall_bounce);
+        // 감쇠 계수는 틱당 속도에 곱하는 값이라 1.0에 가까울수록 마찰↓ → 더 미끄러움.
+        // 얼음은 기본보다 더 미끄러워야 하므로 감쇠 계수가 더 커야 한다.
+        assert!(m.ship_damping > crate::core::config::SHIP_DAMPING);
+        // 비얼음은 기본값
+        let d = stage_modifiers(ThemeId::AsteroidBelt);
+        assert!(!d.wall_bounce);
     }
 }
