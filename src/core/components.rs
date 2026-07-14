@@ -18,3 +18,7 @@ pub struct Wrapping;
 /// `StageModifiers.wall_bounce`가 결정한다(얼음 스테이지에서만 반사).
 #[derive(Component)]
 pub struct EdgeReflect;
+
+/// 블랙홀 중력의 영향을 받는 바디(우주선·소행성). 블랙홀이 활성일 때만 당겨진다.
+#[derive(Component)]
+pub struct GravityBody;

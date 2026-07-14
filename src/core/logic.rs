@@ -155,6 +155,18 @@ pub fn storm_vision_scale(t: f32) -> f32 {
     1.0 - (1.0 - crate::core::config::FOG_VISION_MIN) * storm_pulse(t)
 }
 
+/// 블랙홀을 향한 거리² 반비례 가속. 중심 근처는 min_dist로 클램프해 발산을 막고,
+/// body와 hole이 같은 지점이면 0을 반환한다.
+pub fn gravity_accel(body: Vec2, hole: Vec2, strength: f32, min_dist: f32) -> Vec2 {
+    let to = hole - body;
+    let dir = to.normalize_or_zero();
+    if dir == Vec2::ZERO {
+        return Vec2::ZERO;
+    }
+    let d2 = to.length_squared().max(min_dist * min_dist);
+    dir * (strength / d2)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -351,5 +363,32 @@ mod tests {
         // 피크(t=1.75) → FOG_VISION_MIN, 평소(t=0) → 1.0
         assert!((storm_vision_scale(1.75) - crate::core::config::FOG_VISION_MIN).abs() < 1e-4);
         assert!((storm_vision_scale(0.0) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn gravity_pulls_toward_hole_and_weakens_with_distance() {
+        let hole = Vec2::new(0.0, 100.0);
+        let near = gravity_accel(Vec2::new(0.0, 0.0), hole, 1_000_000.0, 40.0);
+        let far = gravity_accel(Vec2::new(0.0, -200.0), hole, 1_000_000.0, 40.0);
+        // 방향: 둘 다 +y(중심 쪽)
+        assert!(near.y > 0.0 && far.y > 0.0);
+        assert!(near.x.abs() < 1e-3 && far.x.abs() < 1e-3);
+        // 가까울수록 강함
+        assert!(near.length() > far.length());
+    }
+
+    #[test]
+    fn gravity_is_clamped_near_center() {
+        let hole = Vec2::ZERO;
+        // 중심과 거의 같은 지점이어도 min_dist로 클램프되어 유한
+        let a = gravity_accel(Vec2::new(0.1, 0.0), hole, 1_000_000.0, 40.0);
+        let max = 1_000_000.0 / (40.0 * 40.0);
+        assert!(a.length() <= max + 1e-3);
+    }
+
+    #[test]
+    fn gravity_zero_at_same_point() {
+        let a = gravity_accel(Vec2::ZERO, Vec2::ZERO, 1_000_000.0, 40.0);
+        assert_eq!(a, Vec2::ZERO);
     }
 }

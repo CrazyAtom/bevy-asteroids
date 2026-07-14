@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::core::components::{AngularVelocity, Collider, EdgeReflect, Velocity};
+use crate::core::components::{AngularVelocity, Collider, EdgeReflect, GravityBody, Velocity};
 use crate::core::config::{
     ASTEROID_MAX_SPEED, ASTEROID_MIN_SPEED, ASTEROID_SPIN_MAX, HALF_HEIGHT, HALF_WIDTH, Z_ENTITY,
 };
@@ -43,6 +43,7 @@ pub fn spawn_asteroid(
         AngularVelocity(spin),
         Collider { radius: size.radius() },
         EdgeReflect,
+        GravityBody,
         GameplayEntity,
     ));
 }

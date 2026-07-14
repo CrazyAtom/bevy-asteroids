@@ -14,6 +14,7 @@ use crate::fx::sprites::SpriteAssets;
 use crate::fx::shake::ShakeEvent;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::core::logic::{circles_overlap, next_asteroid_size, segment_circle_hit};
+use crate::entities::black_hole::{BlackHole, BlackHoleActive};
 use crate::entities::player::{spawn_player_entity, Player, Shield};
 use crate::entities::special_weapon::SpecialBeam;
 use crate::core::state::{GameState, Lives, Score};
@@ -175,6 +176,8 @@ fn player_damage(
     ufos: Query<(&Transform, &Collider), With<Ufo>>,
     bosses: Query<(&Transform, &Collider), With<Boss>>,
     enemy_bullets: Query<(Entity, &Transform, &Collider), With<EnemyBullet>>,
+    black_holes: Query<(&Transform, &Collider), With<BlackHole>>,
+    bh_active: Res<BlackHoleActive>,
 ) {
     let Ok((player_entity, player_tf, player_col, shield)) = players.single() else {
         return;
@@ -213,6 +216,14 @@ fn player_damage(
         for (b_entity, b_tf, b_col) in &enemy_bullets {
             if circles_overlap(ppos, pr, b_tf.translation.truncate(), b_col.radius) {
                 commands.entity(b_entity).despawn();
+                hit = true;
+                break;
+            }
+        }
+    }
+    if !hit && bh_active.active {
+        for (h_tf, h_col) in &black_holes {
+            if circles_overlap(ppos, pr, h_tf.translation.truncate(), h_col.radius) {
                 hit = true;
                 break;
             }
@@ -327,6 +338,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player,
@@ -353,6 +365,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(1));
         app.world_mut().spawn((
             Player,
@@ -437,6 +450,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player, Transform::from_xyz(0.0, 0.0, 0.0), Collider { radius: 12.0 },
@@ -459,6 +473,7 @@ mod tests {
         app.add_message::<SfxEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player, Transform::from_xyz(0.0, 0.0, 0.0), Collider { radius: 12.0 },
@@ -480,6 +495,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player,

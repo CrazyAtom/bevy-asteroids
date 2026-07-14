@@ -121,3 +121,10 @@ pub const TESLA_ATTACK_INTERVAL: f32 = 1.8;
 pub const BLINK_INTERVAL: f32 = 3.0; // 순간이동 주기(초)
 pub const STORM_EMP_THRESHOLD: f32 = 0.6; // storm_pulse가 이 값을 상향 돌파하면 EMP 발동
 pub const BLINK_TELEGRAPH_SECS: f32 = 0.4; // 블링크 직전 예고(축소) 시간
+
+// Phase 8 — 블랙홀(중력장)
+pub const GRAVITY_STRENGTH: f32 = 1_800_000.0; // 흡인력 계수(accel = strength / dist²)
+pub const GRAVITY_MIN_DIST: f32 = 40.0;        // 중심 근처 클램프(발산 방지)
+pub const EVENT_HORIZON: f32 = 32.0;           // 사건의 지평선(치명) 반경
+pub const BLACK_HOLE_POS_Y: f32 = 120.0;       // 블랙홀 위치 y(우주선 스폰(0,0)과 겹치지 않게)
+pub const BLACK_HOLE_VISUAL: f32 = 110.0;      // 블랙홀 스프라이트 크기(지평선보다 큼 = 경고)
