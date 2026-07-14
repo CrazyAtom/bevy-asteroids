@@ -4,12 +4,15 @@ use bevy::prelude::*;
 
 use crate::core::components::{Collider, EdgeReflect, Velocity};
 use crate::core::config::{
-    BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE,
-    BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK, BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES,
-    GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED, GOLEM_STEER, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION,
-    UFO_BULLET_SPEED, Z_ENTITY,
+    BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BLINK_INTERVAL, BLINK_TELEGRAPH_SECS,
+    BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE, BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK,
+    BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED,
+    GOLEM_STEER, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION, STORM_EMP_THRESHOLD,
+    TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
 };
-use crate::core::logic::{aim_direction, circles_overlap, segment_circle_hit, AsteroidSize};
+use crate::core::logic::{
+    aim_direction, circles_overlap, segment_circle_hit, storm_pulse, AsteroidSize,
+};
 use crate::core::config::STARTING_LIVES;
 use crate::core::state::{GameState, GameplayEntity, Lives, Score};
 use crate::entities::asteroid::{random_velocity, spawn_asteroid};
@@ -29,6 +32,7 @@ pub enum BossKind {
     Mothership,
     BlazingCore,
     IceGolem,
+    TeslaCore,
 }
 
 pub fn boss_for_theme(t: ThemeId) -> BossKind {
@@ -37,6 +41,7 @@ pub fn boss_for_theme(t: ThemeId) -> BossKind {
         ThemeId::AlienFleet => BossKind::Mothership,
         ThemeId::SolarFlare => BossKind::BlazingCore,
         ThemeId::FrozenField => BossKind::IceGolem,
+        ThemeId::EmStorm => BossKind::TeslaCore,
     }
 }
 
@@ -55,6 +60,7 @@ pub fn boss_max_health(kind: BossKind, cycle: u32) -> f32 {
         BossKind::Mothership => BOSS_BASE_HEALTH,
         BossKind::BlazingCore => BOSS_BASE_HEALTH * 1.2,
         BossKind::IceGolem => BOSS_BASE_HEALTH * ICE_GOLEM_HEALTH_MUL,
+        BossKind::TeslaCore => BOSS_BASE_HEALTH * TESLA_HEALTH_MUL,
     };
     base + cycle as f32 * BOSS_HEALTH_PER_CYCLE
 }
@@ -71,6 +77,7 @@ pub fn boss_image(kind: BossKind, assets: &SpriteAssets) -> Handle<Image> {
         BossKind::Mothership => assets.boss_mothership.clone(),
         BossKind::BlazingCore => assets.boss_blazing_core.clone(),
         BossKind::IceGolem => assets.boss_ice_golem.clone(),
+        BossKind::TeslaCore => assets.boss_tesla_core.clone(),
     }
 }
 
@@ -80,6 +87,7 @@ pub fn boss_radius(kind: BossKind) -> f32 {
         BossKind::Mothership => 90.0,
         BossKind::BlazingCore => 60.0,
         BossKind::IceGolem => 66.0,
+        BossKind::TeslaCore => 56.0,
     }
 }
 
@@ -102,6 +110,9 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
     if kind == BossKind::IceGolem {
         e.insert((Velocity(Vec2::new(GOLEM_DRIFT_SPEED, GOLEM_DRIFT_SPEED * 0.55)), EdgeReflect));
     }
+    if kind == BossKind::TeslaCore {
+        e.insert(Blink { timer: Timer::from_seconds(BLINK_INTERVAL, TimerMode::Repeating) });
+    }
 }
 
 /// 보스 종류별 공격 주기(초).
@@ -111,7 +122,13 @@ fn attack_interval(kind: BossKind) -> f32 {
         BossKind::Mothership => 2.1,
         BossKind::BlazingCore => 2.4,
         BossKind::IceGolem => GOLEM_ATTACK_INTERVAL,
+        BossKind::TeslaCore => TESLA_ATTACK_INTERVAL,
     }
+}
+
+/// storm_pulse가 임계를 상향 돌파하는 순간만 true(EMP 1회 발동용 상승 엣지).
+pub fn storm_emp_triggers(prev_pulse: f32, cur_pulse: f32) -> bool {
+    prev_pulse < STORM_EMP_THRESHOLD && cur_pulse >= STORM_EMP_THRESHOLD
 }
 
 /// 골렘 공격 교대: 짝수 발 = 팔 휘두르기(부채꼴 파편), 홀수 발 = 내려찍기(방사 탄).
@@ -149,13 +166,27 @@ pub struct BossAttack {
     pub shots: u32,
 }
 
+/// 테슬라 코어 순간이동 타이머.
+#[derive(Component)]
+pub struct Blink {
+    pub timer: Timer,
+}
+
 pub struct BossPlugin;
 
 impl Plugin for BossPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (boss_movement, boss_attack, boss_combat, golem_phase_transition, boss_entrance)
+            (
+                boss_movement,
+                boss_attack,
+                boss_combat,
+                golem_phase_transition,
+                boss_entrance,
+                boss_blink,
+                storm_emp,
+            )
                 .run_if(in_state(GameState::Playing)),
         );
     }
@@ -208,6 +239,8 @@ fn boss_movement(
                     }
                 }
             }
+            // 테슬라 코어: 블링크(boss_blink)가 위치를 옮김. 여기선 조작 없음.
+            BossKind::TeslaCore => {}
         }
     }
 }
@@ -290,6 +323,16 @@ fn boss_attack(
                     for i in 0..n {
                         let ang = i as f32 / n as f32 * std::f32::consts::TAU;
                         let d = Vec2::new(ang.cos(), ang.sin());
+                        spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                    }
+                }
+            }
+            // 테슬라 코어: 조준 체인 전격(EMP는 폭풍 피크에 동기화되어 storm_emp에서 발동).
+            BossKind::TeslaCore => {
+                if let Some(pp) = player_pos {
+                    let dir = aim_direction(pos, pp);
+                    for a in [-0.25f32, 0.0, 0.25] {
+                        let d = (Quat::from_rotation_z(a) * dir.extend(0.0)).truncate();
                         spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
                     }
                 }
@@ -385,6 +428,68 @@ fn golem_phase_transition(
     }
 }
 
+/// 테슬라 코어 블링크: 타이머마다 화면 내 임의 위치로 순간이동. 순간이동 직전엔 예고로 축소했다가
+/// 이동 직후 원복한다.
+fn boss_blink(
+    time: Res<Time>,
+    mut sfx: MessageWriter<SfxEvent>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut q: Query<(&mut Transform, &mut Sprite, &mut Blink), With<Boss>>,
+) {
+    use rand::RngExt;
+    let base = boss_radius(BossKind::TeslaCore) * 2.0;
+    for (mut tf, mut sprite, mut blink) in &mut q {
+        blink.timer.tick(time.delta());
+        // 예고: 순간이동 직전 축소
+        let remain = blink.timer.remaining_secs();
+        let scale = if remain < BLINK_TELEGRAPH_SECS { 0.6 } else { 1.0 };
+        sprite.custom_size = Some(Vec2::splat(base * scale));
+        if blink.timer.is_finished() {
+            let mut rng = rand::rng();
+            tf.translation.x = rng.random_range(-crate::core::config::HALF_WIDTH * 0.8..crate::core::config::HALF_WIDTH * 0.8);
+            tf.translation.y = rng.random_range(0.0..crate::core::config::HALF_HEIGHT * 0.7);
+            sprite.custom_size = Some(Vec2::splat(base)); // 원복
+            // 순간이동 피드백: 워프 사운드 + 소폭 흔들림(무음 예고 방지 — 적대적 리뷰 반영).
+            sfx.write(SfxEvent(Sfx::Hyperspace));
+            shake.write(ShakeEvent(SHAKE_EXPLOSION));
+        }
+    }
+}
+
+/// 폭풍 피크(storm_pulse 상승 엣지)에 테슬라 코어가 EMP 방사 링을 쏜다.
+fn storm_emp(
+    mut commands: Commands,
+    assets: Res<SpriteAssets>,
+    time: Res<Time>,
+    mut prev: Local<f32>,
+    mut shake: MessageWriter<ShakeEvent>,
+    bosses: Query<(&Boss, &Transform)>,
+) {
+    let cur = storm_pulse(time.elapsed_secs());
+    let fire = storm_emp_triggers(*prev, cur);
+    *prev = cur;
+    if !fire {
+        return;
+    }
+    let mut fired = false;
+    for (boss, tf) in &bosses {
+        if boss.kind != BossKind::TeslaCore {
+            continue;
+        }
+        let pos = tf.translation.truncate();
+        let n = 14;
+        for i in 0..n {
+            let ang = i as f32 / n as f32 * std::f32::consts::TAU;
+            let d = Vec2::new(ang.cos(), ang.sin());
+            spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+        }
+        fired = true;
+    }
+    if fired {
+        shake.write(ShakeEvent(SHAKE_EXPLOSION));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -447,5 +552,20 @@ mod tests {
         assert!((track(0.0, Some(100.0), 0.5) - 50.0).abs() < 1e-4); // 절반 당김
         assert_eq!(track(30.0, None, 0.5), 30.0); // 플레이어 없으면 패턴 유지
         assert_eq!(track(30.0, Some(100.0), 0.0), 30.0); // factor 0이면 고정
+    }
+
+    #[test]
+    fn tesla_core_is_em_storm_boss() {
+        assert_eq!(boss_for_theme(ThemeId::EmStorm), BossKind::TeslaCore);
+        assert!(boss_max_health(BossKind::TeslaCore, 0) > 0.0);
+    }
+
+    #[test]
+    fn emp_triggers_on_rising_edge_only() {
+        // 임계 아래→위로 오를 때만 true(상승 엣지), 이미 위이거나 내려갈 땐 false.
+        assert!(storm_emp_triggers(0.5, 0.7)); // 상승 돌파
+        assert!(!storm_emp_triggers(0.7, 0.8)); // 이미 위
+        assert!(!storm_emp_triggers(0.8, 0.5)); // 하강
+        assert!(!storm_emp_triggers(0.3, 0.5)); // 아래 유지
     }
 }

@@ -4,6 +4,7 @@ use crate::core::config::{CYCLE_LEN, SHIP_DAMPING_ICE, STARTING_LIVES, WAVES_PER
 use crate::core::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
 use crate::core::state::{GameState, Lives};
 use crate::entities::asteroid::{random_spawn_position, random_velocity, spawn_asteroid, Asteroid};
+use crate::fx::fog::FogState;
 use crate::fx::sprites::SpriteAssets;
 use crate::systems::movement::StageModifiers;
 
@@ -13,10 +14,16 @@ pub enum ThemeId {
     AlienFleet,
     SolarFlare,
     FrozenField,
+    EmStorm,
 }
 
-pub const THEME_POOL: [ThemeId; 4] =
-    [ThemeId::AsteroidBelt, ThemeId::AlienFleet, ThemeId::SolarFlare, ThemeId::FrozenField];
+pub const THEME_POOL: [ThemeId; 5] = [
+    ThemeId::AsteroidBelt,
+    ThemeId::AlienFleet,
+    ThemeId::SolarFlare,
+    ThemeId::FrozenField,
+    ThemeId::EmStorm,
+];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum StagePhase {
@@ -98,6 +105,7 @@ pub fn theme_params(t: ThemeId) -> ThemeParams {
         ThemeId::AlienFleet => ThemeParams { count_mul: 1.0, speed_mul: 1.0, ufo_interval_mul: 0.8 },
         ThemeId::SolarFlare => ThemeParams { count_mul: 1.0, speed_mul: 1.2, ufo_interval_mul: 1.0 },
         ThemeId::FrozenField => ThemeParams { count_mul: 0.9, speed_mul: 0.95, ufo_interval_mul: 1.0 },
+        ThemeId::EmStorm => ThemeParams { count_mul: 0.85, speed_mul: 0.9, ufo_interval_mul: 1.0 },
     }
 }
 
@@ -116,6 +124,7 @@ pub fn theme_name(t: ThemeId) -> &'static str {
         ThemeId::AlienFleet => "ALIEN FLEET",
         ThemeId::SolarFlare => "SOLAR FLARE",
         ThemeId::FrozenField => "FROZEN FIELD",
+        ThemeId::EmStorm => "EM STORM",
     }
 }
 
@@ -134,6 +143,15 @@ fn sync_stage_modifiers(prog: Res<Progression>, mut mods: ResMut<StageModifiers>
     mods.ship_damping = want.ship_damping;
 }
 
+/// EM Storm 스테이지에서만 안개를 켠다(Playing 중에만). 상태 비의존 동기화.
+fn sync_fog_state(
+    state: Res<State<GameState>>,
+    prog: Res<Progression>,
+    mut fog: ResMut<FogState>,
+) {
+    fog.active = *state.get() == GameState::Playing && prog.current_theme() == ThemeId::EmStorm;
+}
+
 pub struct StagePlugin;
 
 impl Plugin for StagePlugin {
@@ -145,7 +163,8 @@ impl Plugin for StagePlugin {
         .add_systems(
             Update,
             (stage_control, sync_stage_modifiers).run_if(in_state(GameState::Playing)),
-        );
+        )
+        .add_systems(Update, sync_fog_state);
     }
 }
 
@@ -267,5 +286,11 @@ mod tests {
         // 비얼음은 기본값
         let d = stage_modifiers(ThemeId::AsteroidBelt);
         assert!(!d.wall_bounce);
+    }
+
+    #[test]
+    fn em_storm_params_are_softened() {
+        let p = theme_params(ThemeId::EmStorm);
+        assert!(p.count_mul < 1.0 && p.speed_mul < 1.0);
     }
 }
