@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 강착원반: 비대칭 나선 팔(회전 시 소용돌이로 보임) -->
+  <path d="M50 10 A40 40 0 1 1 10 50" fill="none" stroke="#ff8a2c" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+  <path d="M90 50 A40 40 0 1 1 50 90" fill="none" stroke="#ffd07a" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+  <path d="M50 22 A28 28 0 1 1 22 50" fill="none" stroke="#7cf5ff" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+  <path d="M78 50 A28 28 0 1 1 50 78" fill="none" stroke="#c8a2ff" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  <!-- 사건의 지평선(검은 핵) -->
+  <circle cx="50" cy="50" r="20" fill="#04030a" stroke="#1a1030" stroke-width="3"/>
+  <circle cx="50" cy="50" r="20" fill="none" stroke="#9a7bff" stroke-width="1.5" opacity="0.6"/>
+  <!-- 밝은 열점(비대칭 → 회전 가시화) -->
+  <circle cx="50" cy="12" r="3.5" fill="#fff2cc"/>
+  <circle cx="86" cy="52" r="2.4" fill="#bfefff"/>
+</svg>

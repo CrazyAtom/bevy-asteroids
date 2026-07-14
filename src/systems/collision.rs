@@ -14,6 +14,7 @@ use crate::fx::sprites::SpriteAssets;
 use crate::fx::shake::ShakeEvent;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::core::logic::{circles_overlap, next_asteroid_size, segment_circle_hit};
+use crate::entities::black_hole::{BlackHole, BlackHoleActive};
 use crate::entities::player::{spawn_player_entity, Player, Shield};
 use crate::entities::special_weapon::SpecialBeam;
 use crate::core::state::{GameState, Lives, Score};
@@ -57,8 +58,9 @@ fn bullet_vs_asteroid(
                 asteroid_col.radius,
             ) {
                 destroyed.insert(asteroid_entity);
-                commands.entity(bullet_entity).despawn();
-                commands.entity(asteroid_entity).despawn();
+                commands.entity(bullet_entity).try_despawn();
+                // 블랙홀이 같은 프레임에 이 소행성을 이미 흡수(despawn)했을 수 있으므로 try_despawn.
+                commands.entity(asteroid_entity).try_despawn();
                 score.0 += asteroid.size.score();
                 spawn_explosion(&mut commands, &assets, asteroid_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
@@ -105,8 +107,8 @@ fn bullet_vs_ufo(
                 ufo_col.radius,
             ) {
                 destroyed.insert(ufo_entity);
-                commands.entity(bullet_entity).despawn();
-                commands.entity(ufo_entity).despawn();
+                commands.entity(bullet_entity).try_despawn();
+                commands.entity(ufo_entity).try_despawn();
                 score.0 += ufo.size.score();
                 spawn_explosion(&mut commands, &assets, ufo_tf.translation.truncate(), EXPLOSION_PARTICLES);
                 shake.write(ShakeEvent(SHAKE_EXPLOSION));
@@ -142,7 +144,8 @@ fn beam_vs_targets(
             }
             if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
                 destroyed.insert(e);
-                commands.entity(e).despawn();
+                // 블랙홀이 같은 프레임에 이 소행성을 이미 흡수했을 수 있으므로 try_despawn.
+                commands.entity(e).try_despawn();
                 score.0 += asteroid.size.score();
                 spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));
@@ -154,7 +157,7 @@ fn beam_vs_targets(
             }
             if segment_circle_hit(beam.origin, beam.dir, BEAM_LENGTH, BEAM_WIDTH * 0.5, tf.translation.truncate(), col.radius) {
                 destroyed.insert(e);
-                commands.entity(e).despawn();
+                commands.entity(e).try_despawn();
                 score.0 += ufo.size.score();
                 spawn_explosion(&mut commands, &assets, tf.translation.truncate(), EXPLOSION_PARTICLES);
                 sfx.write(SfxEvent(Sfx::Explosion));
@@ -175,6 +178,8 @@ fn player_damage(
     ufos: Query<(&Transform, &Collider), With<Ufo>>,
     bosses: Query<(&Transform, &Collider), With<Boss>>,
     enemy_bullets: Query<(Entity, &Transform, &Collider), With<EnemyBullet>>,
+    black_holes: Query<(&Transform, &Collider), With<BlackHole>>,
+    bh_active: Res<BlackHoleActive>,
 ) {
     let Ok((player_entity, player_tf, player_col, shield)) = players.single() else {
         return;
@@ -212,7 +217,15 @@ fn player_damage(
     if !hit {
         for (b_entity, b_tf, b_col) in &enemy_bullets {
             if circles_overlap(ppos, pr, b_tf.translation.truncate(), b_col.radius) {
-                commands.entity(b_entity).despawn();
+                commands.entity(b_entity).try_despawn();
+                hit = true;
+                break;
+            }
+        }
+    }
+    if !hit && bh_active.active {
+        for (h_tf, h_col) in &black_holes {
+            if circles_overlap(ppos, pr, h_tf.translation.truncate(), h_col.radius) {
                 hit = true;
                 break;
             }
@@ -327,6 +340,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player,
@@ -353,6 +367,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(1));
         app.world_mut().spawn((
             Player,
@@ -437,6 +452,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player, Transform::from_xyz(0.0, 0.0, 0.0), Collider { radius: 12.0 },
@@ -459,6 +475,7 @@ mod tests {
         app.add_message::<SfxEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player, Transform::from_xyz(0.0, 0.0, 0.0), Collider { radius: 12.0 },
@@ -480,6 +497,7 @@ mod tests {
         app.add_message::<crate::fx::shake::ShakeEvent>();
         app.add_plugins(bevy::state::app::StatesPlugin);
         app.init_state::<GameState>();
+        app.init_resource::<BlackHoleActive>();
         app.insert_resource(Lives(3));
         app.world_mut().spawn((
             Player,

@@ -7,15 +7,17 @@ use crate::core::config::{
     BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BLINK_INTERVAL, BLINK_TELEGRAPH_SECS,
     BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE, BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK,
     BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED,
-    GOLEM_STEER, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION, STORM_EMP_THRESHOLD,
-    TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
+    GOLEM_STEER, GRAVITY_INTENSIFY, GRAVITY_STRENGTH, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION,
+    SINGULARITY_ATTACK_INTERVAL, SINGULARITY_HEALTH_MUL, SPIRAL_ARMS, SPIRAL_STEP,
+    STORM_EMP_THRESHOLD, TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
 };
 use crate::core::logic::{
-    aim_direction, circles_overlap, segment_circle_hit, storm_pulse, AsteroidSize,
+    aim_direction, circles_overlap, gravity_boost, segment_circle_hit, storm_pulse, AsteroidSize,
 };
 use crate::core::config::STARTING_LIVES;
 use crate::core::state::{GameState, GameplayEntity, Lives, Score};
 use crate::entities::asteroid::{random_velocity, spawn_asteroid};
+use crate::entities::black_hole::BlackHoleActive;
 use crate::entities::bullet::{spawn_enemy_bullet, Bullet};
 use crate::entities::player::Player;
 use crate::entities::special_weapon::SpecialBeam;
@@ -33,6 +35,7 @@ pub enum BossKind {
     BlazingCore,
     IceGolem,
     TeslaCore,
+    SingularityCore,
 }
 
 pub fn boss_for_theme(t: ThemeId) -> BossKind {
@@ -42,6 +45,7 @@ pub fn boss_for_theme(t: ThemeId) -> BossKind {
         ThemeId::SolarFlare => BossKind::BlazingCore,
         ThemeId::FrozenField => BossKind::IceGolem,
         ThemeId::EmStorm => BossKind::TeslaCore,
+        ThemeId::BlackHole => BossKind::SingularityCore,
     }
 }
 
@@ -61,6 +65,7 @@ pub fn boss_max_health(kind: BossKind, cycle: u32) -> f32 {
         BossKind::BlazingCore => BOSS_BASE_HEALTH * 1.2,
         BossKind::IceGolem => BOSS_BASE_HEALTH * ICE_GOLEM_HEALTH_MUL,
         BossKind::TeslaCore => BOSS_BASE_HEALTH * TESLA_HEALTH_MUL,
+        BossKind::SingularityCore => BOSS_BASE_HEALTH * SINGULARITY_HEALTH_MUL,
     };
     base + cycle as f32 * BOSS_HEALTH_PER_CYCLE
 }
@@ -78,6 +83,7 @@ pub fn boss_image(kind: BossKind, assets: &SpriteAssets) -> Handle<Image> {
         BossKind::BlazingCore => assets.boss_blazing_core.clone(),
         BossKind::IceGolem => assets.boss_ice_golem.clone(),
         BossKind::TeslaCore => assets.boss_tesla_core.clone(),
+        BossKind::SingularityCore => assets.boss_singularity.clone(),
     }
 }
 
@@ -88,6 +94,7 @@ pub fn boss_radius(kind: BossKind) -> f32 {
         BossKind::BlazingCore => 60.0,
         BossKind::IceGolem => 66.0,
         BossKind::TeslaCore => 56.0,
+        BossKind::SingularityCore => 66.0,
     }
 }
 
@@ -113,6 +120,13 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
     if kind == BossKind::TeslaCore {
         e.insert(Blink { timer: Timer::from_seconds(BLINK_INTERVAL, TimerMode::Repeating) });
     }
+    if kind == BossKind::SingularityCore {
+        e.insert(Lunge {
+            timer: Timer::from_seconds(crate::core::config::LUNGE_INTERVAL, TimerMode::Repeating),
+            target: Vec2::ZERO,
+            charging: false,
+        });
+    }
 }
 
 /// 보스 종류별 공격 주기(초).
@@ -123,6 +137,7 @@ fn attack_interval(kind: BossKind) -> f32 {
         BossKind::BlazingCore => 2.4,
         BossKind::IceGolem => GOLEM_ATTACK_INTERVAL,
         BossKind::TeslaCore => TESLA_ATTACK_INTERVAL,
+        BossKind::SingularityCore => SINGULARITY_ATTACK_INTERVAL,
     }
 }
 
@@ -186,6 +201,8 @@ impl Plugin for BossPlugin {
                 boss_entrance,
                 boss_blink,
                 storm_emp,
+                singularity_gravity_pulse,
+                singularity_lunge,
             )
                 .run_if(in_state(GameState::Playing)),
         );
@@ -241,6 +258,8 @@ fn boss_movement(
             }
             // 테슬라 코어: 블링크(boss_blink)가 위치를 옮김. 여기선 조작 없음.
             BossKind::TeslaCore => {}
+            // 특이점 코어: 이동은 singularity_lunge가 담당(홈 부유 + 주기적 돌진).
+            BossKind::SingularityCore => {}
         }
     }
 }
@@ -337,6 +356,15 @@ fn boss_attack(
                     }
                 }
             }
+            // 특이점 코어: 회전하는 방사 = 나선 탄.
+            BossKind::SingularityCore => {
+                let base = shots as f32 * SPIRAL_STEP;
+                for i in 0..SPIRAL_ARMS {
+                    let ang = base + i as f32 / SPIRAL_ARMS as f32 * std::f32::consts::TAU;
+                    let d = Vec2::new(ang.cos(), ang.sin());
+                    spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
+                }
+            }
         }
     }
 }
@@ -360,7 +388,7 @@ fn boss_combat(
         let mut defeated = false;
         for (be, btf, bcol) in &bullets {
             if circles_overlap(bpos, boss_col.radius, btf.translation.truncate(), bcol.radius) {
-                commands.entity(be).despawn();
+                commands.entity(be).try_despawn();
                 if apply_boss_damage(&mut boss, BULLET_BOSS_DAMAGE) {
                     defeated = true;
                     break;
@@ -490,6 +518,80 @@ fn storm_emp(
     }
 }
 
+/// 특이점 코어가 존재하면 블랙홀 흡인력을 주기적으로 강화한다(gravity_boost). 없으면 기본 세기.
+fn singularity_gravity_pulse(
+    time: Res<Time>,
+    mut bh: ResMut<BlackHoleActive>,
+    mut shake: MessageWriter<ShakeEvent>,
+    mut surging: Local<bool>,
+    bosses: Query<&Boss>,
+) {
+    let has_singularity = bosses.iter().any(|b| b.kind == BossKind::SingularityCore);
+    if !has_singularity {
+        bh.strength = GRAVITY_STRENGTH;
+        *surging = false;
+        return;
+    }
+    let boost = gravity_boost(time.elapsed_secs());
+    bh.strength = GRAVITY_STRENGTH * boost;
+    // 흡인 강화가 피크로 치솟는 순간(상승 엣지) 화면을 흔들어 '중력 파동'을 체감시킨다(임팩트).
+    let near_peak = boost > 1.0 + (GRAVITY_INTENSIFY - 1.0) * 0.6;
+    if near_peak && !*surging {
+        shake.write(ShakeEvent(SHAKE_EXPLOSION * 2.0));
+        *surging = true;
+    } else if !near_peak {
+        *surging = false;
+    }
+}
+
+/// 특이점 코어 러쉬 타이머·목표. 대부분 홈(중앙 블랙홀 위)에서 부유하다 주기 끝에 플레이어로 돌진.
+#[derive(Component)]
+pub struct Lunge {
+    pub timer: Timer,
+    pub target: Vec2,
+    pub charging: bool,
+}
+
+/// 특이점 코어가 가만히 있지 않도록: 대부분 홈에서 부유하다 주기적으로 플레이어를 향해
+/// 블랙홀 밖으로 돌진했다 복귀한다(덮치는 위협). 사이엔 다시 중앙에 앉아 흡인을 지속.
+fn singularity_lunge(
+    time: Res<Time>,
+    players: Query<&Transform, (With<Player>, Without<Boss>)>,
+    mut q: Query<(&mut Transform, &mut Lunge), With<Boss>>,
+) {
+    let t = time.elapsed_secs();
+    let player_pos = players.single().ok().map(|p| p.translation.truncate());
+    let home = Vec2::new(0.0, crate::core::config::BLACK_HOLE_POS_Y);
+    for (mut tf, mut lunge) in &mut q {
+        lunge.timer.tick(time.delta());
+        let dur = lunge.timer.duration().as_secs_f32();
+        let f = if dur > 0.0 { lunge.timer.elapsed_secs() / dur } else { 0.0 };
+        let pos = if f < 0.65 {
+            // 홈에서 약한 부유
+            lunge.charging = false;
+            home + Vec2::new((t * 0.7).sin() * 16.0, (t * 1.1).sin() * 10.0)
+        } else {
+            // 돌진 창(0.65..1.0): 진입 시 플레이어 방향 목표 캡처, sin으로 나갔다 복귀
+            if !lunge.charging {
+                let dir = player_pos
+                    .map(|pp| (pp - home).normalize_or_zero())
+                    .unwrap_or(Vec2::NEG_Y);
+                // 목적지를 화면 안(보스 반경 여유 70)으로 클램프해 상단 등으로 돌출하지 않게 한다.
+                let hw = crate::core::config::HALF_WIDTH - 70.0;
+                let hh = crate::core::config::HALF_HEIGHT - 70.0;
+                let dest = (home + dir * crate::core::config::LUNGE_DIST)
+                    .clamp(Vec2::new(-hw, -hh), Vec2::new(hw, hh));
+                lunge.target = dest - home;
+                lunge.charging = true;
+            }
+            let p = (f - 0.65) / 0.35;
+            home + lunge.target * (p * std::f32::consts::PI).sin()
+        };
+        tf.translation.x = pos.x;
+        tf.translation.y = pos.y;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -567,5 +669,11 @@ mod tests {
         assert!(!storm_emp_triggers(0.7, 0.8)); // 이미 위
         assert!(!storm_emp_triggers(0.8, 0.5)); // 하강
         assert!(!storm_emp_triggers(0.3, 0.5)); // 아래 유지
+    }
+
+    #[test]
+    fn singularity_is_black_hole_boss() {
+        assert_eq!(boss_for_theme(ThemeId::BlackHole), BossKind::SingularityCore);
+        assert!(boss_max_health(BossKind::SingularityCore, 0) > 0.0);
     }
 }

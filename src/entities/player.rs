@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::core::components::{Collider, Velocity, Wrapping};
+use crate::core::components::{Collider, GravityBody, Velocity, Wrapping};
 use crate::core::config::{
     HYPERSPACE_COOLDOWN_SECS, SHIP_BRAKE_RATE, SHIP_COLLIDER_RADIUS, SHIP_MAX_SPEED,
     SHIP_ROTATION_SPEED, SHIP_THRUST, SHIP_TURN_ACCEL, SHIP_TURN_MIN, SPAWN_INVINCIBILITY_SECS,
@@ -102,6 +102,7 @@ pub fn spawn_player_entity(commands: &mut Commands, assets: &SpriteAssets) {
             Collider { radius: SHIP_COLLIDER_RADIUS },
             Wrapping,
             GameplayEntity,
+            GravityBody,
             EngineState::default(),
             FireCooldown({
                 let mut t = Timer::from_seconds(crate::core::config::FIRE_INTERVAL, TimerMode::Once);

@@ -1,4 +1,5 @@
 pub mod asteroid;
+pub mod black_hole;
 pub mod boss;
 pub mod bullet;
 pub mod player;

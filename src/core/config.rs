@@ -121,3 +121,21 @@ pub const TESLA_ATTACK_INTERVAL: f32 = 1.8;
 pub const BLINK_INTERVAL: f32 = 3.0; // 순간이동 주기(초)
 pub const STORM_EMP_THRESHOLD: f32 = 0.6; // storm_pulse가 이 값을 상향 돌파하면 EMP 발동
 pub const BLINK_TELEGRAPH_SECS: f32 = 0.4; // 블링크 직전 예고(축소) 시간
+
+// Phase 8 — 블랙홀(중력장)
+pub const GRAVITY_STRENGTH: f32 = 1_800_000.0; // 흡인력 계수(accel = strength / dist²)
+pub const GRAVITY_MIN_DIST: f32 = 40.0;        // 중심 근처 클램프(발산 방지)
+pub const EVENT_HORIZON: f32 = 32.0;           // 사건의 지평선(치명) 반경
+pub const BLACK_HOLE_POS_Y: f32 = 120.0;       // 블랙홀 위치 y(우주선 스폰(0,0)과 겹치지 않게)
+pub const BLACK_HOLE_VISUAL: f32 = 190.0;      // 블랙홀 스프라이트 크기(지평선보다 크게 = 위압·경고)
+pub const BLACK_HOLE_SPIN: f32 = 0.5;          // 강착원반 회전 각속도(rad/s, 화려함)
+
+// Phase 8 — 특이점 코어 보스
+pub const SINGULARITY_HEALTH_MUL: f32 = 1.3;
+pub const SINGULARITY_ATTACK_INTERVAL: f32 = 0.42; // 나선 탄 발사 주기(짧게)
+pub const SPIRAL_STEP: f32 = 0.4;                 // 발사마다 회전량(rad)
+pub const SPIRAL_ARMS: u32 = 7;                   // 발사당 탄 수(밀도↑ = 임팩트)
+pub const GRAVITY_INTENSIFY: f32 = 2.2;    // 흡인 강화 피크 배율
+pub const GRAVITY_PULSE_PERIOD: f32 = 6.0; // 강화 주기(초)
+pub const LUNGE_INTERVAL: f32 = 4.5;       // 특이점 코어 돌진 주기(초)
+pub const LUNGE_DIST: f32 = 260.0;         // 돌진 거리(중앙 홈 기준, u)
