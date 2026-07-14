@@ -30,6 +30,8 @@ pub struct SpriteAssets {
     pub bg_storm: Handle<Image>,
     pub boss_tesla_core: Handle<Image>,
     pub black_hole: Handle<Image>,
+    pub bg_void: Handle<Image>,
+    pub boss_singularity: Handle<Image>,
     pub powerup: [Handle<Image>; 5], // Shield, RapidFire, Spread, ExtraLife, SpecialWeapon
     pub explosion_frames: Vec<Handle<Image>>,
 }
@@ -81,6 +83,8 @@ fn build_sprite_assets(asset_server: &AssetServer) -> SpriteAssets {
         bg_storm: asset_server.load("sprites/bg_storm.png"),
         boss_tesla_core: asset_server.load("sprites/boss_tesla_core.png"),
         black_hole: asset_server.load("sprites/black_hole.png"),
+        bg_void: asset_server.load("sprites/bg_void.png"),
+        boss_singularity: asset_server.load("sprites/boss_singularity.png"),
         powerup: [
             asset_server.load("sprites/powerup_shield.png"),
             asset_server.load("sprites/powerup_rapid.png"),
@@ -122,6 +126,8 @@ pub fn dummy_sprite_assets() -> SpriteAssets {
         bg_storm: h.clone(),
         boss_tesla_core: h.clone(),
         black_hole: h.clone(),
+        bg_void: h.clone(),
+        boss_singularity: h.clone(),
         powerup: [h.clone(), h.clone(), h.clone(), h.clone(), h.clone()],
         explosion_frames: vec![h.clone(); 6],
     }

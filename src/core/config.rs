@@ -128,3 +128,9 @@ pub const GRAVITY_MIN_DIST: f32 = 40.0;        // 중심 근처 클램프(발산
 pub const EVENT_HORIZON: f32 = 32.0;           // 사건의 지평선(치명) 반경
 pub const BLACK_HOLE_POS_Y: f32 = 120.0;       // 블랙홀 위치 y(우주선 스폰(0,0)과 겹치지 않게)
 pub const BLACK_HOLE_VISUAL: f32 = 110.0;      // 블랙홀 스프라이트 크기(지평선보다 큼 = 경고)
+
+// Phase 8 — 특이점 코어 보스
+pub const SINGULARITY_HEALTH_MUL: f32 = 1.3;
+pub const SINGULARITY_ATTACK_INTERVAL: f32 = 0.5; // 나선 탄 발사 주기(짧게)
+pub const SPIRAL_STEP: f32 = 0.4;                 // 발사마다 회전량(rad)
+pub const SPIRAL_ARMS: u32 = 5;                   // 발사당 탄 수

@@ -7,7 +7,8 @@ use crate::core::config::{
     BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BLINK_INTERVAL, BLINK_TELEGRAPH_SECS,
     BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE, BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK,
     BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED,
-    GOLEM_STEER, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION, STORM_EMP_THRESHOLD,
+    GOLEM_STEER, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION, SINGULARITY_ATTACK_INTERVAL,
+    SINGULARITY_HEALTH_MUL, SPIRAL_ARMS, SPIRAL_STEP, STORM_EMP_THRESHOLD,
     TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
 };
 use crate::core::logic::{
@@ -33,6 +34,7 @@ pub enum BossKind {
     BlazingCore,
     IceGolem,
     TeslaCore,
+    SingularityCore,
 }
 
 pub fn boss_for_theme(t: ThemeId) -> BossKind {
@@ -42,6 +44,7 @@ pub fn boss_for_theme(t: ThemeId) -> BossKind {
         ThemeId::SolarFlare => BossKind::BlazingCore,
         ThemeId::FrozenField => BossKind::IceGolem,
         ThemeId::EmStorm => BossKind::TeslaCore,
+        ThemeId::BlackHole => BossKind::SingularityCore,
     }
 }
 
@@ -61,6 +64,7 @@ pub fn boss_max_health(kind: BossKind, cycle: u32) -> f32 {
         BossKind::BlazingCore => BOSS_BASE_HEALTH * 1.2,
         BossKind::IceGolem => BOSS_BASE_HEALTH * ICE_GOLEM_HEALTH_MUL,
         BossKind::TeslaCore => BOSS_BASE_HEALTH * TESLA_HEALTH_MUL,
+        BossKind::SingularityCore => BOSS_BASE_HEALTH * SINGULARITY_HEALTH_MUL,
     };
     base + cycle as f32 * BOSS_HEALTH_PER_CYCLE
 }
@@ -78,6 +82,7 @@ pub fn boss_image(kind: BossKind, assets: &SpriteAssets) -> Handle<Image> {
         BossKind::BlazingCore => assets.boss_blazing_core.clone(),
         BossKind::IceGolem => assets.boss_ice_golem.clone(),
         BossKind::TeslaCore => assets.boss_tesla_core.clone(),
+        BossKind::SingularityCore => assets.boss_singularity.clone(),
     }
 }
 
@@ -88,6 +93,7 @@ pub fn boss_radius(kind: BossKind) -> f32 {
         BossKind::BlazingCore => 60.0,
         BossKind::IceGolem => 66.0,
         BossKind::TeslaCore => 56.0,
+        BossKind::SingularityCore => 52.0,
     }
 }
 
@@ -123,6 +129,7 @@ fn attack_interval(kind: BossKind) -> f32 {
         BossKind::BlazingCore => 2.4,
         BossKind::IceGolem => GOLEM_ATTACK_INTERVAL,
         BossKind::TeslaCore => TESLA_ATTACK_INTERVAL,
+        BossKind::SingularityCore => SINGULARITY_ATTACK_INTERVAL,
     }
 }
 
@@ -241,6 +248,11 @@ fn boss_movement(
             }
             // 테슬라 코어: 블링크(boss_blink)가 위치를 옮김. 여기선 조작 없음.
             BossKind::TeslaCore => {}
+            // 특이점 코어: 중앙 블랙홀 위 고정 + 약한 부유.
+            BossKind::SingularityCore => {
+                tf.translation.x = (t * 0.7).sin() * 20.0;
+                tf.translation.y = crate::core::config::BLACK_HOLE_POS_Y + (t * 1.1).sin() * 12.0;
+            }
         }
     }
 }
@@ -335,6 +347,15 @@ fn boss_attack(
                         let d = (Quat::from_rotation_z(a) * dir.extend(0.0)).truncate();
                         spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
                     }
+                }
+            }
+            // 특이점 코어: 회전하는 방사 = 나선 탄.
+            BossKind::SingularityCore => {
+                let base = shots as f32 * SPIRAL_STEP;
+                for i in 0..SPIRAL_ARMS {
+                    let ang = base + i as f32 / SPIRAL_ARMS as f32 * std::f32::consts::TAU;
+                    let d = Vec2::new(ang.cos(), ang.sin());
+                    spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
                 }
             }
         }
@@ -567,5 +588,11 @@ mod tests {
         assert!(!storm_emp_triggers(0.7, 0.8)); // 이미 위
         assert!(!storm_emp_triggers(0.8, 0.5)); // 하강
         assert!(!storm_emp_triggers(0.3, 0.5)); // 아래 유지
+    }
+
+    #[test]
+    fn singularity_is_black_hole_boss() {
+        assert_eq!(boss_for_theme(ThemeId::BlackHole), BossKind::SingularityCore);
+        assert!(boss_max_health(BossKind::SingularityCore, 0) > 0.0);
     }
 }

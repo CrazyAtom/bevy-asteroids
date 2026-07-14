@@ -4,6 +4,7 @@ use crate::core::config::{CYCLE_LEN, SHIP_DAMPING_ICE, STARTING_LIVES, WAVES_PER
 use crate::core::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
 use crate::core::state::{GameState, Lives};
 use crate::entities::asteroid::{random_spawn_position, random_velocity, spawn_asteroid, Asteroid};
+use crate::entities::black_hole::BlackHoleActive;
 use crate::fx::fog::FogState;
 use crate::fx::sprites::SpriteAssets;
 use crate::systems::movement::StageModifiers;
@@ -15,14 +16,16 @@ pub enum ThemeId {
     SolarFlare,
     FrozenField,
     EmStorm,
+    BlackHole,
 }
 
-pub const THEME_POOL: [ThemeId; 5] = [
+pub const THEME_POOL: [ThemeId; 6] = [
     ThemeId::AsteroidBelt,
     ThemeId::AlienFleet,
     ThemeId::SolarFlare,
     ThemeId::FrozenField,
     ThemeId::EmStorm,
+    ThemeId::BlackHole,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -106,6 +109,7 @@ pub fn theme_params(t: ThemeId) -> ThemeParams {
         ThemeId::SolarFlare => ThemeParams { count_mul: 1.0, speed_mul: 1.2, ufo_interval_mul: 1.0 },
         ThemeId::FrozenField => ThemeParams { count_mul: 0.9, speed_mul: 0.95, ufo_interval_mul: 1.0 },
         ThemeId::EmStorm => ThemeParams { count_mul: 0.85, speed_mul: 0.9, ufo_interval_mul: 1.0 },
+        ThemeId::BlackHole => ThemeParams { count_mul: 0.8, speed_mul: 0.9, ufo_interval_mul: 1.0 },
     }
 }
 
@@ -125,6 +129,7 @@ pub fn theme_name(t: ThemeId) -> &'static str {
         ThemeId::SolarFlare => "SOLAR FLARE",
         ThemeId::FrozenField => "FROZEN FIELD",
         ThemeId::EmStorm => "EM STORM",
+        ThemeId::BlackHole => "BLACK HOLE",
     }
 }
 
@@ -152,6 +157,15 @@ fn sync_fog_state(
     fog.active = *state.get() == GameState::Playing && prog.current_theme() == ThemeId::EmStorm;
 }
 
+/// 블랙홀 스테이지에서만 중력을 켠다(Playing 중에만). 상태 비의존 동기화.
+fn sync_black_hole(
+    state: Res<State<GameState>>,
+    prog: Res<Progression>,
+    mut bh: ResMut<BlackHoleActive>,
+) {
+    bh.active = *state.get() == GameState::Playing && prog.current_theme() == ThemeId::BlackHole;
+}
+
 pub struct StagePlugin;
 
 impl Plugin for StagePlugin {
@@ -164,7 +178,7 @@ impl Plugin for StagePlugin {
             Update,
             (stage_control, sync_stage_modifiers).run_if(in_state(GameState::Playing)),
         )
-        .add_systems(Update, sync_fog_state);
+        .add_systems(Update, (sync_fog_state, sync_black_hole));
     }
 }
 
@@ -291,6 +305,12 @@ mod tests {
     #[test]
     fn em_storm_params_are_softened() {
         let p = theme_params(ThemeId::EmStorm);
+        assert!(p.count_mul < 1.0 && p.speed_mul < 1.0);
+    }
+
+    #[test]
+    fn black_hole_params_are_softened() {
+        let p = theme_params(ThemeId::BlackHole);
         assert!(p.count_mul < 1.0 && p.speed_mul < 1.0);
     }
 }
