@@ -167,6 +167,13 @@ pub fn gravity_accel(body: Vec2, hole: Vec2, strength: f32, min_dist: f32) -> Ve
     dir * (strength / d2)
 }
 
+/// 흡인 강화 배율: 평소 1.0, 주기(GRAVITY_PULSE_PERIOD)마다 GRAVITY_INTENSIFY까지 치솟았다 회복. [1.0, INTENSIFY].
+pub fn gravity_boost(t: f32) -> f32 {
+    use std::f32::consts::TAU;
+    let pulse = (TAU * t / crate::core::config::GRAVITY_PULSE_PERIOD).sin().max(0.0).powi(4);
+    1.0 + (crate::core::config::GRAVITY_INTENSIFY - 1.0) * pulse
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -390,5 +397,20 @@ mod tests {
     fn gravity_zero_at_same_point() {
         let a = gravity_accel(Vec2::ZERO, Vec2::ZERO, 1_000_000.0, 40.0);
         assert_eq!(a, Vec2::ZERO);
+    }
+
+    #[test]
+    fn gravity_boost_between_one_and_intensify_with_peak() {
+        use crate::core::config::GRAVITY_INTENSIFY;
+        let mut saw_peak = false;
+        for i in 0..300 {
+            let t = i as f32 * 0.05;
+            let b = gravity_boost(t);
+            assert!((1.0 - 1e-6..=GRAVITY_INTENSIFY + 1e-6).contains(&b));
+            if b > (1.0 + GRAVITY_INTENSIFY) / 2.0 {
+                saw_peak = true;
+            }
+        }
+        assert!(saw_peak, "주기 안에 흡인 강화 피크가 존재해야 한다");
     }
 }

@@ -7,16 +7,17 @@ use crate::core::config::{
     BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BLINK_INTERVAL, BLINK_TELEGRAPH_SECS,
     BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE, BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK,
     BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED,
-    GOLEM_STEER, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION, SINGULARITY_ATTACK_INTERVAL,
-    SINGULARITY_HEALTH_MUL, SPIRAL_ARMS, SPIRAL_STEP, STORM_EMP_THRESHOLD,
-    TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
+    GOLEM_STEER, GRAVITY_STRENGTH, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION,
+    SINGULARITY_ATTACK_INTERVAL, SINGULARITY_HEALTH_MUL, SPIRAL_ARMS, SPIRAL_STEP,
+    STORM_EMP_THRESHOLD, TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
 };
 use crate::core::logic::{
-    aim_direction, circles_overlap, segment_circle_hit, storm_pulse, AsteroidSize,
+    aim_direction, circles_overlap, gravity_boost, segment_circle_hit, storm_pulse, AsteroidSize,
 };
 use crate::core::config::STARTING_LIVES;
 use crate::core::state::{GameState, GameplayEntity, Lives, Score};
 use crate::entities::asteroid::{random_velocity, spawn_asteroid};
+use crate::entities::black_hole::BlackHoleActive;
 use crate::entities::bullet::{spawn_enemy_bullet, Bullet};
 use crate::entities::player::Player;
 use crate::entities::special_weapon::SpecialBeam;
@@ -193,6 +194,7 @@ impl Plugin for BossPlugin {
                 boss_entrance,
                 boss_blink,
                 storm_emp,
+                singularity_gravity_pulse,
             )
                 .run_if(in_state(GameState::Playing)),
         );
@@ -509,6 +511,20 @@ fn storm_emp(
     if fired {
         shake.write(ShakeEvent(SHAKE_EXPLOSION));
     }
+}
+
+/// 특이점 코어가 존재하면 블랙홀 흡인력을 주기적으로 강화한다(gravity_boost). 없으면 기본 세기.
+fn singularity_gravity_pulse(
+    time: Res<Time>,
+    mut bh: ResMut<BlackHoleActive>,
+    bosses: Query<&Boss>,
+) {
+    let has_singularity = bosses.iter().any(|b| b.kind == BossKind::SingularityCore);
+    bh.strength = if has_singularity {
+        GRAVITY_STRENGTH * gravity_boost(time.elapsed_secs())
+    } else {
+        GRAVITY_STRENGTH
+    };
 }
 
 #[cfg(test)]

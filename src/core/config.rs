@@ -134,3 +134,5 @@ pub const SINGULARITY_HEALTH_MUL: f32 = 1.3;
 pub const SINGULARITY_ATTACK_INTERVAL: f32 = 0.5; // 나선 탄 발사 주기(짧게)
 pub const SPIRAL_STEP: f32 = 0.4;                 // 발사마다 회전량(rad)
 pub const SPIRAL_ARMS: u32 = 5;                   // 발사당 탄 수
+pub const GRAVITY_INTENSIFY: f32 = 2.2;    // 흡인 강화 피크 배율
+pub const GRAVITY_PULSE_PERIOD: f32 = 6.0; // 강화 주기(초)
