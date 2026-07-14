@@ -120,6 +120,13 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
     if kind == BossKind::TeslaCore {
         e.insert(Blink { timer: Timer::from_seconds(BLINK_INTERVAL, TimerMode::Repeating) });
     }
+    if kind == BossKind::SingularityCore {
+        e.insert(Lunge {
+            timer: Timer::from_seconds(crate::core::config::LUNGE_INTERVAL, TimerMode::Repeating),
+            target: Vec2::ZERO,
+            charging: false,
+        });
+    }
 }
 
 /// 보스 종류별 공격 주기(초).
@@ -195,6 +202,7 @@ impl Plugin for BossPlugin {
                 boss_blink,
                 storm_emp,
                 singularity_gravity_pulse,
+                singularity_lunge,
             )
                 .run_if(in_state(GameState::Playing)),
         );
@@ -250,11 +258,8 @@ fn boss_movement(
             }
             // 테슬라 코어: 블링크(boss_blink)가 위치를 옮김. 여기선 조작 없음.
             BossKind::TeslaCore => {}
-            // 특이점 코어: 중앙 블랙홀 위 고정 + 약한 부유.
-            BossKind::SingularityCore => {
-                tf.translation.x = (t * 0.7).sin() * 20.0;
-                tf.translation.y = crate::core::config::BLACK_HOLE_POS_Y + (t * 1.1).sin() * 12.0;
-            }
+            // 특이점 코어: 이동은 singularity_lunge가 담당(홈 부유 + 주기적 돌진).
+            BossKind::SingularityCore => {}
         }
     }
 }
@@ -536,6 +541,49 @@ fn singularity_gravity_pulse(
         *surging = true;
     } else if !near_peak {
         *surging = false;
+    }
+}
+
+/// 특이점 코어 러쉬 타이머·목표. 대부분 홈(중앙 블랙홀 위)에서 부유하다 주기 끝에 플레이어로 돌진.
+#[derive(Component)]
+pub struct Lunge {
+    pub timer: Timer,
+    pub target: Vec2,
+    pub charging: bool,
+}
+
+/// 특이점 코어가 가만히 있지 않도록: 대부분 홈에서 부유하다 주기적으로 플레이어를 향해
+/// 블랙홀 밖으로 돌진했다 복귀한다(덮치는 위협). 사이엔 다시 중앙에 앉아 흡인을 지속.
+fn singularity_lunge(
+    time: Res<Time>,
+    players: Query<&Transform, (With<Player>, Without<Boss>)>,
+    mut q: Query<(&mut Transform, &mut Lunge), With<Boss>>,
+) {
+    let t = time.elapsed_secs();
+    let player_pos = players.single().ok().map(|p| p.translation.truncate());
+    let home = Vec2::new(0.0, crate::core::config::BLACK_HOLE_POS_Y);
+    for (mut tf, mut lunge) in &mut q {
+        lunge.timer.tick(time.delta());
+        let dur = lunge.timer.duration().as_secs_f32();
+        let f = if dur > 0.0 { lunge.timer.elapsed_secs() / dur } else { 0.0 };
+        let pos = if f < 0.65 {
+            // 홈에서 약한 부유
+            lunge.charging = false;
+            home + Vec2::new((t * 0.7).sin() * 16.0, (t * 1.1).sin() * 10.0)
+        } else {
+            // 돌진 창(0.65..1.0): 진입 시 플레이어 방향 목표 캡처, sin으로 나갔다 복귀
+            if !lunge.charging {
+                let dir = player_pos
+                    .map(|pp| (pp - home).normalize_or_zero())
+                    .unwrap_or(Vec2::NEG_Y);
+                lunge.target = dir * crate::core::config::LUNGE_DIST;
+                lunge.charging = true;
+            }
+            let p = (f - 0.65) / 0.35;
+            home + lunge.target * (p * std::f32::consts::PI).sin()
+        };
+        tf.translation.x = pos.x;
+        tf.translation.y = pos.y;
     }
 }
 

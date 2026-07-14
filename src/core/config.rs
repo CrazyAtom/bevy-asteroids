@@ -137,3 +137,5 @@ pub const SPIRAL_STEP: f32 = 0.4;                 // 발사마다 회전량(rad)
 pub const SPIRAL_ARMS: u32 = 7;                   // 발사당 탄 수(밀도↑ = 임팩트)
 pub const GRAVITY_INTENSIFY: f32 = 2.2;    // 흡인 강화 피크 배율
 pub const GRAVITY_PULSE_PERIOD: f32 = 6.0; // 강화 주기(초)
+pub const LUNGE_INTERVAL: f32 = 4.5;       // 특이점 코어 돌진 주기(초)
+pub const LUNGE_DIST: f32 = 260.0;         // 돌진 거리(중앙 홈 기준, u)
