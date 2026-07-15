@@ -3,7 +3,7 @@ use rand::RngExt;
 
 use crate::core::components::Velocity;
 use crate::core::config::{PARTICLE_LIFETIME_SECS, PARTICLE_SPEED_MAX, PARTICLE_SPEED_MIN, Z_PARTICLE};
-use crate::core::state::{GameState, GameplayEntity};
+use crate::core::state::{GameplayEntity, RunPhase};
 use crate::fx::sprites::SpriteAssets;
 
 #[derive(Component)]
@@ -17,7 +17,7 @@ impl Plugin for EffectsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (particle_lifetime, fade_particles).run_if(in_state(GameState::Playing)),
+            (particle_lifetime, fade_particles).run_if(in_state(RunPhase::Running)),
         );
     }
 }

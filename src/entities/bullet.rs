@@ -6,7 +6,7 @@ use crate::core::config::{
     FIRE_INTERVAL, RAPID_FIRE_INTERVAL, SPREAD_ANGLE, UFO_BULLET_LIFETIME_SECS, Z_ENTITY,
 };
 use crate::entities::player::{FireCooldown, Player, RapidFire, Spread};
-use crate::core::state::{GameState, GameplayEntity};
+use crate::core::state::{GameplayEntity, RunPhase};
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::sprites::SpriteAssets;
 
@@ -27,7 +27,7 @@ impl Plugin for BulletPlugin {
         app.add_systems(
             Update,
             (fire_bullet, bullet_lifetime, enemy_bullet_lifetime)
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(RunPhase::Running)),
         );
     }
 }

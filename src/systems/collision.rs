@@ -17,7 +17,7 @@ use crate::core::logic::{circles_overlap, next_asteroid_size, segment_circle_hit
 use crate::entities::black_hole::{BlackHole, BlackHoleActive};
 use crate::entities::player::{spawn_player_entity, Player, Shield};
 use crate::entities::special_weapon::SpecialBeam;
-use crate::core::state::{GameState, Lives, Score};
+use crate::core::state::{GameState, Lives, RunPhase, Score};
 use crate::entities::boss::Boss;
 use crate::entities::ufo::Ufo;
 use rand::RngExt;
@@ -29,7 +29,7 @@ impl Plugin for CollisionPlugin {
         app.add_systems(
             Update,
             (bullet_vs_asteroid, bullet_vs_ufo, player_damage, beam_vs_targets)
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(RunPhase::Running)),
         );
     }
 }

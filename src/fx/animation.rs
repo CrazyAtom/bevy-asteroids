@@ -46,7 +46,7 @@ impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            advance_animation.run_if(in_state(crate::core::state::GameState::Playing)),
+            advance_animation.run_if(in_state(crate::core::state::RunPhase::Running)),
         );
     }
 }

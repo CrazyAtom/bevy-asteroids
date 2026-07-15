@@ -6,11 +6,28 @@ use crate::core::config::STARTING_LIVES;
 use crate::core::logic::update_high_score;
 use crate::fx::audio::{Sfx, SfxEvent};
 
+// `Title`과 `RunPhase::Paused`는 이 태스크(상태 뼈대)에서는 아직 어떤 시스템도 진입시키지
+// 않는다(타이틀 화면·일시정지 입력 배선은 후속 태스크). 프로덕션 코드에서 미사용이라
+// clippy dead_code 경고가 뜨므로 명시적으로 allow. resume_does_not_reset_score /
+// restart_via_bounce_resets_score 테스트가 `Paused`/`Restarting` 전이를 검증한다.
 #[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum GameState {
     #[default]
     Playing,
+    #[allow(dead_code)]
+    Title,
+    Restarting,
     GameOver,
+}
+
+/// Playing 하위 진행/정지 축. Playing에 진입하면 자동으로 Running으로 생성된다.
+#[derive(SubStates, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
+#[source(GameState = GameState::Playing)]
+pub enum RunPhase {
+    #[default]
+    Running,
+    #[allow(dead_code)]
+    Paused,
 }
 
 #[derive(Resource, Default)]
@@ -31,11 +48,13 @@ pub struct GameStatePlugin;
 impl Plugin for GameStatePlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<GameState>()
+            .add_sub_state::<RunPhase>()
             .insert_resource(Score(0))
             .insert_resource(Lives(STARTING_LIVES))
             .insert_resource(crate::systems::stage::new_progression())
             .add_systems(OnEnter(GameState::Playing), reset_game)
             .add_systems(OnExit(GameState::Playing), despawn_gameplay_entities)
+            .add_systems(OnEnter(GameState::Restarting), bounce_to_playing)
             .add_systems(OnEnter(GameState::GameOver), (save_high_score, play_game_over_sfx));
     }
 }
@@ -50,6 +69,12 @@ pub(crate) fn reset_game(
     lives.0 = STARTING_LIVES;
     *prog = crate::systems::stage::new_progression();
     ufo_spawn_timer.0 = Timer::from_seconds(crate::core::config::UFO_SPAWN_INTERVAL_BASE, TimerMode::Once);
+}
+
+/// Restarting은 1프레임 바운스 상태다. 진입 즉시 Playing으로 넘겨
+/// OnExit(Playing)→OnEnter(Playing)의 전면 teardown+rebuild를 유발한다.
+fn bounce_to_playing(mut next: ResMut<NextState<GameState>>) {
+    next.set(GameState::Playing);
 }
 
 fn despawn_gameplay_entities(mut commands: Commands, query: Query<Entity, With<GameplayEntity>>) {
@@ -115,5 +140,39 @@ mod tests {
         assert_eq!(result.unwrap().0, 0);
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 테스트용 최소 앱: 상태 기계 + GameStatePlugin + reset_game가 요구하는 리소스.
+    fn state_test_app() -> App {
+        let mut app = App::new();
+        app.add_plugins(bevy::state::app::StatesPlugin);
+        app.add_plugins(GameStatePlugin);
+        app.insert_resource(UfoSpawnTimer(Timer::from_seconds(1.0, TimerMode::Once)));
+        // 명시적으로 Playing 진입(기본 상태에 의존하지 않음 → Task 3의 default 변경에도 견고)
+        app.world_mut().resource_mut::<NextState<GameState>>().set(GameState::Playing);
+        app.update();
+        app
+    }
+
+    #[test]
+    fn resume_does_not_reset_score() {
+        let mut app = state_test_app();
+        app.world_mut().resource_mut::<Score>().0 = 50;
+        app.world_mut().resource_mut::<NextState<RunPhase>>().set(RunPhase::Paused);
+        app.update();
+        app.world_mut().resource_mut::<NextState<RunPhase>>().set(RunPhase::Running);
+        app.update();
+        assert_eq!(app.world().resource::<Score>().0, 50, "재개는 점수를 리셋하면 안 된다");
+    }
+
+    #[test]
+    fn restart_via_bounce_resets_score() {
+        let mut app = state_test_app();
+        app.world_mut().resource_mut::<Score>().0 = 50;
+        app.world_mut().resource_mut::<NextState<GameState>>().set(GameState::Restarting);
+        app.update(); // Playing→Restarting: OnExit(Playing), OnEnter(Restarting)→NextState(Playing)
+        app.update(); // Restarting→Playing: OnEnter(Playing) reset_game → 0
+        assert_eq!(app.world().resource::<Score>().0, 0, "재시작은 점수를 0으로 리셋해야 한다");
+        assert_eq!(*app.world().resource::<State<GameState>>().get(), GameState::Playing);
     }
 }

@@ -8,7 +8,7 @@ mod hud;
 
 use bevy::prelude::*;
 
-use crate::core::state::GameState;
+use crate::core::state::{GameState, RunPhase};
 
 pub struct UiPlugin;
 
@@ -31,7 +31,7 @@ impl Plugin for UiPlugin {
                     banner::wave_banner_lifetime,
                     boss_bar::update_boss_bar,
                 )
-                    .run_if(in_state(GameState::Playing)),
+                    .run_if(in_state(RunPhase::Running)),
             )
             .add_systems(OnEnter(GameState::GameOver), game_over::spawn_game_over)
             .add_systems(OnExit(GameState::GameOver), game_over::despawn_game_over)

@@ -10,7 +10,7 @@ use crate::core::config::{
     GRAVITY_STRENGTH, Z_ENTITY,
 };
 use crate::core::logic::gravity_accel;
-use crate::core::state::GameState;
+use crate::core::state::RunPhase;
 use crate::entities::asteroid::Asteroid;
 use crate::fx::sprites::SpriteAssets;
 
@@ -39,8 +39,8 @@ impl Plugin for BlackHolePlugin {
             // 가시성은 상태 무관 상시 실행(update_fog와 동형): GameOver에서 active=false가 되면
             // 즉시 Hidden 처리해 블랙홀 스프라이트 잔상을 막는다.
             .add_systems(Update, update_black_hole_visibility)
-            .add_systems(Update, consume_asteroids.run_if(in_state(GameState::Playing)))
-            .add_systems(FixedUpdate, gravity_pull.run_if(in_state(GameState::Playing)));
+            .add_systems(Update, consume_asteroids.run_if(in_state(RunPhase::Running)))
+            .add_systems(FixedUpdate, gravity_pull.run_if(in_state(RunPhase::Running)));
     }
 }
 

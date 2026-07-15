@@ -10,7 +10,7 @@ use crate::core::config::{
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 use crate::core::logic::aim_direction;
 use crate::entities::player::Player;
-use crate::core::state::{GameState, GameplayEntity};
+use crate::core::state::{GameplayEntity, RunPhase};
 use crate::fx::audio::{Sfx, SfxEvent};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -54,7 +54,7 @@ impl Plugin for UfoPlugin {
         .add_systems(
             Update,
             (ufo_spawn_system, ufo_wobble, ufo_fire, despawn_offscreen_ufo)
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(RunPhase::Running)),
         );
     }
 }

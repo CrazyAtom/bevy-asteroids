@@ -7,7 +7,7 @@ use crate::core::config::{
     STARTING_SPECIAL_CHARGES, Z_ENTITY, Z_FLAME,
 };
 use crate::core::logic::apply_brake;
-use crate::core::state::{GameState, GameplayEntity, Lives};
+use crate::core::state::{GameState, GameplayEntity, Lives, RunPhase};
 use crate::entities::special_weapon::shield_burst::ShieldBurst;
 use crate::entities::special_weapon::{SpecialWeapon, SpecialWeaponKind};
 use crate::fx::audio::{Sfx, SfxEvent};
@@ -66,15 +66,15 @@ impl Plugin for PlayerPlugin {
                     tick_fire_mods,
                     hyperspace,
                 )
-                    .run_if(in_state(GameState::Playing)),
+                    .run_if(in_state(RunPhase::Running)),
             )
             .add_systems(
                 FixedUpdate,
-                apply_ship_damping.run_if(in_state(GameState::Playing)),
+                apply_ship_damping.run_if(in_state(RunPhase::Running)),
             );
         // 디버그 빌드 한정: F1로 HUD 상태 전부 채워 확인(무적 실드 포함).
         #[cfg(debug_assertions)]
-        app.add_systems(Update, debug_fill_hud.run_if(in_state(GameState::Playing)));
+        app.add_systems(Update, debug_fill_hud.run_if(in_state(RunPhase::Running)));
     }
 }
 
