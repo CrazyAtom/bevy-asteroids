@@ -41,7 +41,6 @@ impl Plugin for UiPlugin {
             )
             .add_systems(OnEnter(GameState::GameOver), game_over::spawn_game_over)
             .add_systems(OnExit(GameState::GameOver), game_over::despawn_game_over)
-            .add_systems(Update, game_over::restart_input.run_if(in_state(GameState::GameOver)))
             .add_systems(Update, pause::pause_input.run_if(in_state(RunPhase::Running)))
             .add_systems(Update, pause::resume_on_esc.run_if(in_state(RunPhase::Paused)))
             .add_systems(OnEnter(RunPhase::Paused), pause::spawn_pause_menu)
