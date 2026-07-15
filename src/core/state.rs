@@ -6,16 +6,10 @@ use crate::core::config::STARTING_LIVES;
 use crate::core::logic::update_high_score;
 use crate::fx::audio::{Sfx, SfxEvent};
 
-// `Title`과 `RunPhase::Paused`는 이 태스크(상태 뼈대)에서는 아직 어떤 시스템도 진입시키지
-// 않는다(타이틀 화면·일시정지 입력 배선은 후속 태스크). 프로덕션 코드에서 미사용이라
-// clippy dead_code 경고가 뜨므로 명시적으로 allow.
 #[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum GameState {
     #[default]
     Playing,
-    /// 후속 태스크(타이틀 화면 배선)까지 미사용. restart_via_bounce_resets_score
-    /// 테스트가 `Restarting` 전이를 검증한다.
-    #[allow(dead_code)]
     Title,
     Restarting,
     GameOver,

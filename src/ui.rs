@@ -5,6 +5,7 @@ mod banner;
 mod boss_bar;
 mod game_over;
 mod hud;
+mod menu;
 
 use bevy::prelude::*;
 
@@ -15,6 +16,7 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<banner::LastStage>()
+            .init_resource::<menu::MenuSelection>()
             .add_systems(
                 OnEnter(GameState::Playing),
                 (hud::spawn_hud, boss_bar::spawn_boss_bar, banner::reset_last_stage),
@@ -35,6 +37,14 @@ impl Plugin for UiPlugin {
             )
             .add_systems(OnEnter(GameState::GameOver), game_over::spawn_game_over)
             .add_systems(OnExit(GameState::GameOver), game_over::despawn_game_over)
-            .add_systems(Update, game_over::restart_input.run_if(in_state(GameState::GameOver)));
+            .add_systems(Update, game_over::restart_input.run_if(in_state(GameState::GameOver)))
+            .add_systems(
+                Update,
+                (menu::menu_move, menu::menu_activate, menu::highlight_menu).run_if(
+                    in_state(GameState::Title)
+                        .or_else(in_state(GameState::GameOver))
+                        .or_else(in_state(RunPhase::Paused)),
+                ),
+            );
     }
 }
