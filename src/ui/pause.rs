@@ -30,9 +30,10 @@ pub(super) fn resume_on_esc(
 }
 
 pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>) {
-    // 전체 화면 어둠 오버레이
+    // 전체 화면 어둠 오버레이 (게임 스프라이트·HUD보다 위, 메뉴 텍스트보다 아래)
     commands.spawn((
         PauseUi,
+        GlobalZIndex(1),
         Node {
             position_type: PositionType::Absolute,
             width: Val::Percent(100.0),
@@ -44,6 +45,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
     // PAUSED
     commands.spawn((
         PauseUi,
+        GlobalZIndex(2),
         Text::new("PAUSED"),
         TextFont { font_size: FontSize::Px(56.0), ..default() },
         TextColor(Color::WHITE),
@@ -63,6 +65,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
     for (i, (action, label)) in items.iter().enumerate() {
         commands.spawn((
             PauseUi,
+            GlobalZIndex(2),
             MenuItem { index: i, action: *action, label },
             Text::new(label.to_string()),
             TextFont { font_size: FontSize::Px(34.0), ..default() },
