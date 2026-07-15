@@ -25,6 +25,7 @@ impl Plugin for UiPlugin {
                     hud::update_hud,
                     hud::update_life_icons,
                     hud::update_mod_icons,
+                    hud::update_weapon_slots,
                     banner::announce_stage,
                     banner::announce_boss,
                     banner::wave_banner_lifetime,

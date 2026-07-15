@@ -8,8 +8,7 @@ use crate::core::config::{
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity, Lives};
-use crate::entities::powerup::SpecialWeaponKind;
-use crate::entities::special_weapon::SpecialWeapon;
+use crate::entities::special_weapon::{SpecialWeapon, SpecialWeaponKind};
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 use crate::systems::movement::StageModifiers;
@@ -109,7 +108,12 @@ pub fn spawn_player_entity(commands: &mut Commands, assets: &SpriteAssets) {
                 t.tick(t.duration()); // 시작 시 준비완료
                 t
             }),
-            SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: STARTING_SPECIAL_CHARGES },
+            SpecialWeapon {
+                queue: std::collections::VecDeque::from(vec![
+                    SpecialWeaponKind::LaserBeam;
+                    STARTING_SPECIAL_CHARGES as usize
+                ]),
+            },
             HyperspaceCooldown({
                 let mut t = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
                 t.tick(t.duration()); // 시작 시 준비완료
@@ -300,7 +304,7 @@ fn debug_fill_hud(
     }
     if let Ok((entity, mut weapon)) = players.single_mut() {
         lives.0 += 1;
-        weapon.charges += 1;
+        weapon.queue.push_back(SpecialWeaponKind::LaserBeam);
         commands.entity(entity).insert((
             Shield(Timer::from_seconds(999.0, TimerMode::Once)),
             RapidFire(Timer::from_seconds(999.0, TimerMode::Once)),
@@ -327,8 +331,9 @@ mod tests {
             .unwrap();
         let mut q = app.world_mut().query_filtered::<&SpecialWeapon, With<Player>>();
         let weapon = q.single(app.world()).unwrap();
-        assert_eq!(weapon.charges, STARTING_SPECIAL_CHARGES);
-        assert!(weapon.charges > 0, "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
+        assert_eq!(weapon.queue.len(), STARTING_SPECIAL_CHARGES as usize);
+        assert_eq!(weapon.queue.front(), Some(&SpecialWeaponKind::LaserBeam));
+        assert!(!weapon.queue.is_empty(), "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
     }
 
     #[test]

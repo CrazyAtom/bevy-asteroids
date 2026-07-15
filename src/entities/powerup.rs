@@ -8,14 +8,9 @@ use crate::core::config::{
 };
 use crate::core::state::{GameState, GameplayEntity, Lives};
 use crate::entities::player::{Player, RapidFire, Shield, Spread};
-use crate::entities::special_weapon::SpecialWeapon;
+use crate::entities::special_weapon::{pick_weapon_kind, weapon_icon, SpecialWeapon, SpecialWeaponKind};
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum SpecialWeaponKind {
-    LaserBeam,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PowerupKind {
@@ -51,7 +46,7 @@ pub fn pick_powerup_kind(roll: f32) -> PowerupKind {
         r if r < 0.50 => PowerupKind::RapidFire,
         r if r < 0.72 => PowerupKind::Spread,
         r if r < 0.88 => PowerupKind::ExtraLife,
-        _ => PowerupKind::SpecialWeapon(SpecialWeaponKind::LaserBeam),
+        r => PowerupKind::SpecialWeapon(pick_weapon_kind((r - 0.88) / 0.12)),
     }
 }
 
@@ -75,10 +70,14 @@ pub fn spawn_powerup(
     let mut rng = rand::rng();
     let angle = rng.random_range(0.0..std::f32::consts::TAU);
     let velocity = Vec2::new(angle.cos(), angle.sin()) * POWERUP_DRIFT_SPEED;
+    let image = match kind {
+        PowerupKind::SpecialWeapon(w) => weapon_icon(w, assets),
+        _ => assets.powerup[powerup_sprite_index(kind)].clone(),
+    };
     commands.spawn((
         Powerup { kind, life: Timer::from_seconds(POWERUP_LIFETIME_SECS, TimerMode::Once) },
         Sprite {
-            image: assets.powerup[powerup_sprite_index(kind)].clone(),
+            image,
             custom_size: Some(sprite_size_for(POWERUP_RADIUS)),
             ..default()
         },
@@ -173,8 +172,7 @@ fn collect_powerup(
                 }
                 PowerupKind::SpecialWeapon(kind) => {
                     if let Ok(mut weapon) = special_q.get_mut(player_entity) {
-                        weapon.kind = kind;
-                        weapon.charges += 1;
+                        weapon.queue.push_back(kind);
                     }
                 }
             }

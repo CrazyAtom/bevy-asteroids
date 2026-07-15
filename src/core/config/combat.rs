@@ -17,3 +17,6 @@ pub const STARTING_SPECIAL_CHARGES: u32 = 1; // 게임 시작 시 보유한 특�
 pub const BEAM_LIFETIME_SECS: f32 = 0.4;
 pub const BEAM_WIDTH: f32 = 22.0;
 pub const BEAM_LENGTH: f32 = 2000.0;
+
+// 특수무기 — 카트라이더 큐
+pub const HUD_QUEUE_SLOTS: usize = 5; // HUD에 표시할 큐 슬롯 수(내부 큐는 무제한)
