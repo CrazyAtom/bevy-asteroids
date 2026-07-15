@@ -20,12 +20,12 @@ use crate::fx::sprites::SpriteAssets;
 use super::{attack_interval, boss_radius, Boss, BossAttack, BossKind};
 
 /// 골렘 공격 교대: 짝수 발 = 팔 휘두르기(부채꼴 파편), 홀수 발 = 내려찍기(방사 탄).
-pub fn golem_attack_is_sweep(shots: u32) -> bool {
+pub(super) fn golem_attack_is_sweep(shots: u32) -> bool {
     shots.is_multiple_of(2)
 }
 
 /// 체력 비율로 골렘 페이즈 산출: >2/3 → 0, >1/3 → 1, 그 이하 → 2.
-pub fn golem_phase(health: f32, max_health: f32) -> u8 {
+pub(super) fn golem_phase(health: f32, max_health: f32) -> u8 {
     let r = if max_health > 0.0 { health / max_health } else { 0.0 };
     if r > 2.0 / 3.0 {
         0
@@ -36,15 +36,15 @@ pub fn golem_phase(health: f32, max_health: f32) -> u8 {
     }
 }
 
-pub fn golem_scale(phase: u8) -> f32 {
+pub(super) fn golem_scale(phase: u8) -> f32 {
     [1.0, 0.8, 0.62][phase.min(2) as usize]
 }
 
-pub fn golem_speed_mul(phase: u8) -> f32 {
+pub(super) fn golem_speed_mul(phase: u8) -> f32 {
     [1.0, 1.35, 1.75][phase.min(2) as usize]
 }
 
-pub fn golem_attack_mul(phase: u8) -> f32 {
+pub(super) fn golem_attack_mul(phase: u8) -> f32 {
     [1.0, 0.8, 0.62][phase.min(2) as usize]
 }
 

@@ -18,10 +18,10 @@ use super::{Boss, BossKind};
 
 /// 특이점 코어 러쉬 타이머·목표. 대부분 홈(중앙 블랙홀 위)에서 부유하다 주기 끝에 플레이어로 돌진.
 #[derive(Component)]
-pub struct Lunge {
-    pub timer: Timer,
-    pub target: Vec2,
-    pub charging: bool,
+pub(super) struct Lunge {
+    pub(super) timer: Timer,
+    pub(super) target: Vec2,
+    pub(super) charging: bool,
 }
 
 /// 특이점 코어: 회전하는 방사 = 나선 탄. boss_attack 디스패치에서 호출.

@@ -16,12 +16,12 @@ use super::{boss_radius, Boss, BossKind};
 
 /// 테슬라 코어 순간이동 타이머.
 #[derive(Component)]
-pub struct Blink {
-    pub timer: Timer,
+pub(super) struct Blink {
+    pub(super) timer: Timer,
 }
 
 /// storm_pulse가 임계를 상향 돌파하는 순간만 true(EMP 1회 발동용 상승 엣지).
-pub fn storm_emp_triggers(prev_pulse: f32, cur_pulse: f32) -> bool {
+pub(super) fn storm_emp_triggers(prev_pulse: f32, cur_pulse: f32) -> bool {
     prev_pulse < STORM_EMP_THRESHOLD && cur_pulse >= STORM_EMP_THRESHOLD
 }
 
