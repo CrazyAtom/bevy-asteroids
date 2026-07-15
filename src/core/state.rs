@@ -21,9 +21,6 @@ pub enum GameState {
 pub enum RunPhase {
     #[default]
     Running,
-    /// 후속 태스크(일시정지 입력 배선)까지 미사용. resume_does_not_reset_score /
-    /// gameplay_systems_freeze_when_paused 테스트가 `Paused` 전이·게이팅을 검증한다.
-    #[allow(dead_code)]
     Paused,
 }
 

@@ -7,10 +7,6 @@ use bevy::prelude::*;
 
 use crate::core::state::{GameState, RunPhase};
 
-// 아직 어떤 화면도 MenuItem을 스폰하지 않아 각 variant를 생성하는 프로덕션 코드가 없다
-// (타이틀/일시정지/게임오버 화면 배선은 후속 태스크). menu_activate는 값을 match로
-// "소비"할 뿐 "생성"하지 않으므로 clippy dead_code가 여전히 경고한다. 명시적으로 allow.
-#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MenuAction {
     StartGame,
