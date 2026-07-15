@@ -58,6 +58,26 @@ pub fn spawn_enemy_bullet(
     ));
 }
 
+/// 아군 총알 1발 스폰(방향으로 회전). 확산탄·노바 등 모든 아군 탄이 공유한다.
+pub fn spawn_bullet(commands: &mut Commands, assets: &SpriteAssets, position: Vec2, dir: Vec2) {
+    commands.spawn((
+        Bullet { life: Timer::from_seconds(BULLET_LIFETIME_SECS, TimerMode::Once) },
+        Sprite {
+            image: assets.bullet.clone(),
+            custom_size: Some(Vec2::new(6.0, 14.0)),
+            ..default()
+        },
+        Transform {
+            translation: position.extend(Z_ENTITY),
+            rotation: Quat::from_rotation_z(dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2),
+            ..default()
+        },
+        Velocity(dir * BULLET_SPEED),
+        Collider { radius: BULLET_COLLIDER_RADIUS },
+        GameplayEntity,
+    ));
+}
+
 fn enemy_bullet_lifetime(
     mut commands: Commands,
     time: Res<Time>,
@@ -96,22 +116,7 @@ fn fire_bullet(
     for i in 0..count {
         let a = (i as f32 - (count as f32 - 1.0) / 2.0) * SPREAD_ANGLE;
         let dir = (Quat::from_rotation_z(a) * base).truncate();
-        commands.spawn((
-            Bullet { life: Timer::from_seconds(BULLET_LIFETIME_SECS, TimerMode::Once) },
-            Sprite {
-                image: assets.bullet.clone(),
-                custom_size: Some(Vec2::new(6.0, 14.0)),
-                ..default()
-            },
-            Transform {
-                translation: nose,
-                rotation: Quat::from_rotation_z(dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2),
-                ..default()
-            },
-            Velocity(dir * BULLET_SPEED),
-            Collider { radius: BULLET_COLLIDER_RADIUS },
-            GameplayEntity,
-        ));
+        spawn_bullet(&mut commands, &assets, nose.truncate(), dir);
     }
     sfx.write(SfxEvent(Sfx::Fire));
 }
@@ -154,6 +159,20 @@ mod tests {
         let e = app.world_mut().spawn(Bullet { life: timer }).id();
         app.world_mut().run_system_once(bullet_lifetime).unwrap();
         assert!(app.world().get_entity(e).is_ok());
+    }
+
+    #[test]
+    fn spawn_bullet_moves_along_dir() {
+        let mut app = App::new();
+        let assets = crate::fx::sprites::dummy_sprite_assets();
+        app.world_mut()
+            .run_system_once(move |mut c: Commands| {
+                spawn_bullet(&mut c, &assets, Vec2::ZERO, Vec2::X);
+            })
+            .unwrap();
+        let mut q = app.world_mut().query_filtered::<&Velocity, With<Bullet>>();
+        let v = q.single(app.world()).unwrap();
+        assert!((v.0.x - BULLET_SPEED).abs() < 1e-3 && v.0.y.abs() < 1e-3);
     }
 
     #[test]

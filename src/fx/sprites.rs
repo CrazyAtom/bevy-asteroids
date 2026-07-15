@@ -33,6 +33,11 @@ pub struct SpriteAssets {
     pub bg_void: Handle<Image>,
     pub boss_singularity: Handle<Image>,
     pub powerup: [Handle<Image>; 5], // Shield, RapidFire, Spread, ExtraLife, SpecialWeapon
+    pub weapon_nova: Handle<Image>,
+    pub weapon_missile: Handle<Image>,
+    pub missile: Handle<Image>,
+    pub weapon_shockwave: Handle<Image>,
+    pub weapon_burst: Handle<Image>,
     pub explosion_frames: Vec<Handle<Image>>,
 }
 
@@ -92,6 +97,11 @@ fn build_sprite_assets(asset_server: &AssetServer) -> SpriteAssets {
             asset_server.load("sprites/powerup_life.png"),
             asset_server.load("sprites/powerup_special.png"),
         ],
+        weapon_nova: asset_server.load("sprites/weapon_nova.png"),
+        weapon_missile: asset_server.load("sprites/weapon_missile.png"),
+        missile: asset_server.load("sprites/missile.png"),
+        weapon_shockwave: asset_server.load("sprites/weapon_shockwave.png"),
+        weapon_burst: asset_server.load("sprites/weapon_burst.png"),
         explosion_frames,
     }
 }
@@ -129,6 +139,11 @@ pub fn dummy_sprite_assets() -> SpriteAssets {
         bg_void: h.clone(),
         boss_singularity: h.clone(),
         powerup: [h.clone(), h.clone(), h.clone(), h.clone(), h.clone()],
+        weapon_nova: h.clone(),
+        weapon_missile: h.clone(),
+        missile: h.clone(),
+        weapon_shockwave: h.clone(),
+        weapon_burst: h.clone(),
         explosion_frames: vec![h.clone(); 6],
     }
 }

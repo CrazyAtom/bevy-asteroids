@@ -4,9 +4,10 @@ use bevy::prelude::*;
 use bevy::text::FontSize;
 use bevy_persistent::prelude::*;
 
+use crate::core::config::HUD_QUEUE_SLOTS;
 use crate::core::state::{GameplayEntity, HighScore, Lives, Score};
 use crate::entities::player::{Player, RapidFire, Shield, Spread};
-use crate::entities::special_weapon::SpecialWeapon;
+use crate::entities::special_weapon::{weapon_icon, SpecialWeapon};
 use crate::fx::sprites::SpriteAssets;
 use crate::systems::stage::Progression;
 
@@ -17,9 +18,9 @@ pub(super) struct Hud;
 #[derive(Component)]
 pub(super) struct LifeIcon(usize);
 
-/// 특수무기 충전 수 텍스트.
+/// 특수무기 큐 슬롯(앞에서 i번째). 첫 슬롯 = 다음 발동(불투명), 나머지 반투명.
 #[derive(Component)]
-pub(super) struct SpChargeText;
+pub(super) struct WeaponSlotIcon(usize);
 
 /// 활성 파워업 배지 아이콘(0=실드,1=연사,2=확산). 활성 시만 표시.
 #[derive(Component)]
@@ -73,15 +74,16 @@ pub(super) fn spawn_hud(mut commands: Commands, assets: Res<SpriteAssets>) {
                     hearts.spawn((LifeIcon(i), ImageNode::new(assets.powerup[3].clone()), icon()));
                 }
             });
-            // 특수무기: 아이콘 + 충전 수
-            root.spawn(row()).with_children(|sp| {
-                sp.spawn((ImageNode::new(assets.powerup[4].clone()), icon()));
-                sp.spawn((
-                    SpChargeText,
-                    Text::new("0"),
-                    TextFont { font_size: FontSize::Px(22.0), ..default() },
-                    TextColor(Color::WHITE),
-                ));
+            // 특수무기 큐(획득 순서, 맨 앞 = 다음 발동)
+            root.spawn(row()).with_children(|slots| {
+                for i in 0..HUD_QUEUE_SLOTS {
+                    slots.spawn((
+                        WeaponSlotIcon(i),
+                        ImageNode::new(assets.powerup[4].clone()),
+                        icon(),
+                        Visibility::Hidden,
+                    ));
+                }
             });
             // 활성 파워업 배지(실드/연사/확산; 활성 시만 표시)
             root.spawn(row()).with_children(|mods| {
@@ -101,9 +103,7 @@ pub(super) fn update_hud(
     score: Res<Score>,
     high: Res<Persistent<HighScore>>,
     prog: Res<Progression>,
-    player: Query<&SpecialWeapon, With<Player>>,
-    mut hud: Query<&mut Text, (With<Hud>, Without<SpChargeText>)>,
-    mut sp: Query<&mut Text, (With<SpChargeText>, Without<Hud>)>,
+    mut hud: Query<&mut Text, With<Hud>>,
 ) {
     for mut text in &mut hud {
         text.0 = format!(
@@ -111,9 +111,24 @@ pub(super) fn update_hud(
             score.0, high.0, prog.cycle + 1, prog.stage_in_cycle + 1
         );
     }
-    let charges = player.single().map(|w| w.charges).unwrap_or(0);
-    for mut text in &mut sp {
-        text.0 = format!("{charges}");
+}
+
+/// 큐 앞 HUD_QUEUE_SLOTS개를 아이콘으로 표시. 첫 슬롯만 불투명(다음 발동).
+pub(super) fn update_weapon_slots(
+    assets: Res<SpriteAssets>,
+    player: Query<&SpecialWeapon, With<Player>>,
+    mut slots: Query<(&WeaponSlotIcon, &mut ImageNode, &mut Visibility)>,
+) {
+    let queue = player.single().map(|w| w.queue.clone()).unwrap_or_default();
+    for (slot, mut image, mut vis) in &mut slots {
+        match queue.get(slot.0) {
+            Some(kind) => {
+                image.image = weapon_icon(*kind, &assets);
+                image.color = if slot.0 == 0 { Color::WHITE } else { Color::srgba(1.0, 1.0, 1.0, 0.55) };
+                *vis = Visibility::Visible;
+            }
+            None => *vis = Visibility::Hidden,
+        }
     }
 }
 

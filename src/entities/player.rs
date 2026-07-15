@@ -8,8 +8,8 @@ use crate::core::config::{
 };
 use crate::core::logic::apply_brake;
 use crate::core::state::{GameState, GameplayEntity, Lives};
-use crate::entities::powerup::SpecialWeaponKind;
-use crate::entities::special_weapon::SpecialWeapon;
+use crate::entities::special_weapon::shield_burst::ShieldBurst;
+use crate::entities::special_weapon::{SpecialWeapon, SpecialWeaponKind};
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 use crate::systems::movement::StageModifiers;
@@ -109,7 +109,12 @@ pub fn spawn_player_entity(commands: &mut Commands, assets: &SpriteAssets) {
                 t.tick(t.duration()); // 시작 시 준비완료
                 t
             }),
-            SpecialWeapon { kind: SpecialWeaponKind::LaserBeam, charges: STARTING_SPECIAL_CHARGES },
+            SpecialWeapon {
+                queue: std::collections::VecDeque::from(vec![
+                    SpecialWeaponKind::LaserBeam;
+                    STARTING_SPECIAL_CHARGES as usize
+                ]),
+            },
             HyperspaceCooldown({
                 let mut t = Timer::from_seconds(HYPERSPACE_COOLDOWN_SECS, TimerMode::Once);
                 t.tick(t.duration()); // 시작 시 준비완료
@@ -245,16 +250,18 @@ fn tick_fire_mods(
 /// Shield 컴포넌트 유무에 따라 실드 버블 스프라이트의 가시성을 토글한다.
 fn update_shield_sprite(
     time: Res<Time>,
-    player_q: Query<Option<&Shield>, With<Player>>,
+    player_q: Query<(Option<&Shield>, Has<ShieldBurst>), With<Player>>,
     mut shield_q: Query<&mut Visibility, With<ShieldSprite>>,
 ) {
-    let Ok(shield) = player_q.single() else { return };
-    let visible = match shield {
-        None => false,
-        // 만료 0.6초 전부터 깜빡여 보호가 끝나감을 알린다.
-        Some(s) if s.0.remaining_secs() < 1.0 => (time.elapsed_secs() * 10.0).sin() > 0.0,
-        Some(_) => true,
-    };
+    let Ok((shield, burst)) = player_q.single() else { return };
+    // 공격형 실드(ShieldBurst) 중엔 우주선 자체가 번쩍이므로 파란 버블은 숨긴다("버블 없는 번쩍임" 사양).
+    let visible = !burst
+        && match shield {
+            None => false,
+            // 만료 0.6초 전부터 깜빡여 보호가 끝나감을 알린다.
+            Some(s) if s.0.remaining_secs() < 1.0 => (time.elapsed_secs() * 10.0).sin() > 0.0,
+            Some(_) => true,
+        };
     for mut vis in &mut shield_q {
         *vis = if visible {
             Visibility::Visible
@@ -300,7 +307,11 @@ fn debug_fill_hud(
     }
     if let Ok((entity, mut weapon)) = players.single_mut() {
         lives.0 += 1;
-        weapon.charges += 1;
+        weapon.queue.push_back(SpecialWeaponKind::LaserBeam);
+        weapon.queue.push_back(SpecialWeaponKind::ScatterNova);
+        weapon.queue.push_back(SpecialWeaponKind::HomingMissile);
+        weapon.queue.push_back(SpecialWeaponKind::Shockwave);
+        weapon.queue.push_back(SpecialWeaponKind::ShieldBurst);
         commands.entity(entity).insert((
             Shield(Timer::from_seconds(999.0, TimerMode::Once)),
             RapidFire(Timer::from_seconds(999.0, TimerMode::Once)),
@@ -327,8 +338,9 @@ mod tests {
             .unwrap();
         let mut q = app.world_mut().query_filtered::<&SpecialWeapon, With<Player>>();
         let weapon = q.single(app.world()).unwrap();
-        assert_eq!(weapon.charges, STARTING_SPECIAL_CHARGES);
-        assert!(weapon.charges > 0, "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
+        assert_eq!(weapon.queue.len(), STARTING_SPECIAL_CHARGES as usize);
+        assert_eq!(weapon.queue.front(), Some(&SpecialWeaponKind::LaserBeam));
+        assert!(!weapon.queue.is_empty(), "게임 시작 시 특수무기를 최소 1개 보유해야 한다");
     }
 
     #[test]
@@ -451,5 +463,32 @@ mod tests {
         let s = app.world().entity(e).get::<EngineState>().unwrap();
         assert!(s.thrusting);
         assert!(!s.braking);
+    }
+
+    #[test]
+    fn attack_shield_hides_bubble() {
+        // 공격형 실드(Shield + ShieldBurst)는 우주선이 번쩍이므로 파란 버블을 숨긴다.
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default());
+        app.world_mut().spawn((
+            Player,
+            Shield(Timer::from_seconds(4.0, TimerMode::Once)),
+            ShieldBurst { timer: Timer::from_seconds(4.0, TimerMode::Once) },
+        ));
+        let bubble = app.world_mut().spawn((ShieldSprite, Visibility::Visible)).id();
+        app.world_mut().run_system_once(update_shield_sprite).unwrap();
+        assert_eq!(*app.world().entity(bubble).get::<Visibility>().unwrap(), Visibility::Hidden);
+    }
+
+    #[test]
+    fn normal_shield_shows_bubble() {
+        // 방어 실드(Shield만)는 파란 버블을 표시한다(기존 동작 유지).
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default());
+        app.world_mut()
+            .spawn((Player, Shield(Timer::from_seconds(4.0, TimerMode::Once))));
+        let bubble = app.world_mut().spawn((ShieldSprite, Visibility::Hidden)).id();
+        app.world_mut().run_system_once(update_shield_sprite).unwrap();
+        assert_eq!(*app.world().entity(bubble).get::<Visibility>().unwrap(), Visibility::Visible);
     }
 }
