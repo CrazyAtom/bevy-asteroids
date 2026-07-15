@@ -1,141 +1,17 @@
-pub const WINDOW_WIDTH: f32 = 1280.0;
-pub const WINDOW_HEIGHT: f32 = 720.0;
-pub const HALF_WIDTH: f32 = WINDOW_WIDTH / 2.0;
-pub const HALF_HEIGHT: f32 = WINDOW_HEIGHT / 2.0;
+//! 모든 튜닝 상수 — 도메인별 서브모듈로 분리하되, 전부 재수출해
+//! 기존 `crate::core::config::상수` 경로를 그대로 유지한다.
+//! 밸런스/튜닝은 전부 여기(하위 도메인 파일)서.
 
-pub const SHIP_ROTATION_SPEED: f32 = 4.0; // rad/s (회전 각속도 상한)
-pub const SHIP_TURN_MIN: f32 = 1.2;       // 회전 시작 각속도(미세 조준용, rad/s)
-pub const SHIP_TURN_ACCEL: f32 = 8.0;     // 누르는 동안 각속도 가속(rad/s^2)
-pub const SHIP_THRUST: f32 = 320.0;       // units/s^2
-pub const SHIP_COLLIDER_RADIUS: f32 = 12.0;
-// 우주선 감속(마찰): FixedUpdate 틱당 속도에 곱하는 계수. 1.0=마찰없음, 낮을수록 빨리 멈춤.
-pub const SHIP_DAMPING: f32 = 0.985;
-// 우주선 최고 속도 상한(units/s).
-pub const SHIP_MAX_SPEED: f32 = 450.0;
-pub const SHIP_BRAKE_RATE: f32 = 3.0; // 브레이크 감쇠율(1/s)
-// 얼음 테마 감쇠(기본보다 마찰↓ → 더 미끄러움).
-pub const SHIP_DAMPING_ICE: f32 = 0.997;
+mod boss;
+mod combat;
+mod render;
+mod ship;
+mod stage;
+mod world;
 
-pub const BULLET_SPEED: f32 = 620.0;
-pub const BULLET_LIFETIME_SECS: f32 = 1.2;
-pub const BULLET_COLLIDER_RADIUS: f32 = 2.0;
-
-pub const ENEMY_BULLET_COLLIDER_RADIUS: f32 = 2.5;
-pub const UFO_BULLET_LIFETIME_SECS: f32 = 2.5;
-pub const UFO_BULLET_SPEED: f32 = 320.0;
-
-pub const STARTING_LIVES: u32 = 3;
-pub const SPAWN_INVINCIBILITY_SECS: f32 = 3.0; // (재)스폰 직후 일시 무적(즉사 연쇄 방지)
-
-pub const BASE_ASTEROIDS: usize = 3;
-pub const MAX_ASTEROIDS: usize = 10;
-pub const ASTEROID_MIN_SPEED: f32 = 40.0;
-pub const ASTEROID_MAX_SPEED: f32 = 120.0;
-pub const ASTEROID_SPIN_MAX: f32 = 1.5; // rad/s (회전 각속도 범위 ±)
-
-pub const EXPLOSION_PARTICLES: usize = 10;
-pub const PARTICLE_LIFETIME_SECS: f32 = 0.6;
-pub const PARTICLE_SPEED_MIN: f32 = 60.0;
-pub const PARTICLE_SPEED_MAX: f32 = 200.0;
-
-pub const UFO_SPEED: f32 = 140.0;
-pub const UFO_LARGE_RADIUS: f32 = 20.0;
-pub const UFO_SMALL_RADIUS: f32 = 12.0;
-pub const UFO_FIRE_INTERVAL_SECS: f32 = 1.4;
-pub const UFO_SPAWN_INTERVAL_BASE: f32 = 12.0;
-pub const UFO_SPAWN_INTERVAL_MIN: f32 = 5.0;
-
-// Phase 3 — 화면 흔들림
-pub const MAX_SHAKE_OFFSET: f32 = 18.0;
-pub const SHAKE_DECAY: f32 = 1.5;
-pub const SHAKE_HIT: f32 = 0.6;
-pub const SHAKE_EXPLOSION: f32 = 0.25;
-pub const SHAKE_SPECIAL: f32 = 0.5;
-
-// Phase 3 — 발사 쿨다운
-pub const FIRE_INTERVAL: f32 = 0.25;
-pub const RAPID_FIRE_INTERVAL: f32 = 0.10;
-pub const SPREAD_ANGLE: f32 = 0.26; // rad
-pub const RAPID_FIRE_SECS: f32 = 6.0;
-pub const SPREAD_SECS: f32 = 6.0;
-pub const SPREAD_MAX_LEVEL: u8 = 3; // 확산탄 최대 레벨(발사 수 = level*3 → 최대 9발)
-
-// Phase 3 — 파워업
-pub const POWERUP_DROP_CHANCE: f32 = 0.18;
-pub const POWERUP_LIFETIME_SECS: f32 = 8.0;
-pub const POWERUP_DRIFT_SPEED: f32 = 30.0;
-pub const POWERUP_RADIUS: f32 = 12.0;
-pub const POWERUP_MAGNET_RANGE: f32 = 100.0; // 이 거리 안이면 파워업이 플레이어로 끌려옴
-pub const POWERUP_MAGNET_SPEED: f32 = 320.0; // 끌려오는 속도(u/s)
-pub const SHIELD_SECS: f32 = 7.0;
-
-// Phase 3 — 특수무기
-pub const STARTING_SPECIAL_CHARGES: u32 = 1; // 게임 시작 시 보유한 특수무기 충전 수
-pub const BEAM_LIFETIME_SECS: f32 = 0.4;
-pub const BEAM_WIDTH: f32 = 22.0;
-pub const BEAM_LENGTH: f32 = 2000.0;
-
-// Phase 3 — 하이퍼스페이스
-pub const HYPERSPACE_COOLDOWN_SECS: f32 = 2.0;
-
-// Phase 4 — 스프라이트 렌더링
-pub const VISUAL_FIT: f32 = 1.2; // 콜라이더 반경 대비 스프라이트 표시 배율
-pub const Z_BACKGROUND: f32 = -100.0;
-pub const Z_FLAME: f32 = -1.0;
-pub const Z_ENTITY: f32 = 0.0;
-pub const Z_SHIELD: f32 = 5.0;
-pub const Z_BEAM: f32 = 10.0;
-pub const Z_PARTICLE: f32 = 12.0;
-pub const Z_EXPLOSION: f32 = 15.0;
-pub const EXPLOSION_FRAME_COUNT: usize = 6;
-pub const EXPLOSION_FRAME_SECS: f32 = 0.06;
-
-// Phase 5 — 스테이지/보스
-pub const CYCLE_LEN: usize = 3;     // 한 사이클의 스테이지 수(= 무작위로 뽑을 테마 수)
-pub const WAVES_PER_STAGE: u32 = 3; // 스테이지당 보스 전 웨이브 수
-pub const BULLET_BOSS_DAMAGE: f32 = 1.0;
-pub const BEAM_BOSS_DAMAGE: f32 = 4.0;
-pub const BOSS_BASE_HEALTH: f32 = 52.0;      // 기준 체력(전반 상향)
-pub const BOSS_HEALTH_PER_CYCLE: f32 = 18.0; // 사이클마다 증가(후반 스케일↑)
-pub const BOSS_SCORE_BONUS: u32 = 2000;      // 격파 보너스
-
-// Phase 6 — 얼음 골렘
-pub const ICE_GOLEM_HEALTH_MUL: f32 = 1.4; // 느린 대신 높은 체력
-pub const GOLEM_DRIFT_SPEED: f32 = 55.0;   // 느린 드리프트 속도(u/s)
-pub const GOLEM_ATTACK_INTERVAL: f32 = 2.5;
-
-// Phase 6 — 보스 임팩트(위협감)
-pub const BOSS_TRACK: f32 = 0.35;          // 비-골렘 보스가 플레이어 x를 추적하는 블렌드(0=고정, 1=완전추적)
-pub const GOLEM_STEER: f32 = 1.5;          // 골렘이 플레이어 쪽으로 조향하는 초당 비율
-pub const BOSS_ENTRANCE_SHAKE: f32 = 0.8;  // 보스 등장 시 화면 흔들림 강도
-
-// Phase 7 — 전자기폭풍(안개 시야 제한)
-pub const STORM_PERIOD: f32 = 7.0;       // 폭풍 피크 주기(초)
-pub const FOG_VISION_MIN: f32 = 0.6;     // 피크 시 시야 배율(1.0=평소)
-pub const Z_FOG: f32 = 20.0;             // 안개 오버레이 Z(모든 월드 스프라이트 위)
-pub const FOG_BASE_SIZE: f32 = 5200.0;   // 안개 오버레이 기본 크기(px). 최소 배율에서도 화면 구석까지 덮음
-
-// Phase 7 — 테슬라 코어 보스
-pub const TESLA_HEALTH_MUL: f32 = 1.1;
-pub const TESLA_ATTACK_INTERVAL: f32 = 1.8;
-pub const BLINK_INTERVAL: f32 = 3.0; // 순간이동 주기(초)
-pub const STORM_EMP_THRESHOLD: f32 = 0.6; // storm_pulse가 이 값을 상향 돌파하면 EMP 발동
-pub const BLINK_TELEGRAPH_SECS: f32 = 0.4; // 블링크 직전 예고(축소) 시간
-
-// Phase 8 — 블랙홀(중력장)
-pub const GRAVITY_STRENGTH: f32 = 1_800_000.0; // 흡인력 계수(accel = strength / dist²)
-pub const GRAVITY_MIN_DIST: f32 = 40.0;        // 중심 근처 클램프(발산 방지)
-pub const EVENT_HORIZON: f32 = 32.0;           // 사건의 지평선(치명) 반경
-pub const BLACK_HOLE_POS_Y: f32 = 120.0;       // 블랙홀 위치 y(우주선 스폰(0,0)과 겹치지 않게)
-pub const BLACK_HOLE_VISUAL: f32 = 190.0;      // 블랙홀 스프라이트 크기(지평선보다 크게 = 위압·경고)
-pub const BLACK_HOLE_SPIN: f32 = 0.5;          // 강착원반 회전 각속도(rad/s, 화려함)
-
-// Phase 8 — 특이점 코어 보스
-pub const SINGULARITY_HEALTH_MUL: f32 = 1.3;
-pub const SINGULARITY_ATTACK_INTERVAL: f32 = 0.42; // 나선 탄 발사 주기(짧게)
-pub const SPIRAL_STEP: f32 = 0.4;                 // 발사마다 회전량(rad)
-pub const SPIRAL_ARMS: u32 = 7;                   // 발사당 탄 수(밀도↑ = 임팩트)
-pub const GRAVITY_INTENSIFY: f32 = 2.2;    // 흡인 강화 피크 배율
-pub const GRAVITY_PULSE_PERIOD: f32 = 6.0; // 강화 주기(초)
-pub const LUNGE_INTERVAL: f32 = 4.5;       // 특이점 코어 돌진 주기(초)
-pub const LUNGE_DIST: f32 = 260.0;         // 돌진 거리(중앙 홈 기준, u)
+pub use boss::*;
+pub use combat::*;
+pub use render::*;
+pub use ship::*;
+pub use stage::*;
+pub use world::*;
