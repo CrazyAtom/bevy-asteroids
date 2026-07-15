@@ -29,3 +29,11 @@ pub const MISSILE_TURN_RATE: f32 = 6.0; // 조향 상한(rad/s)
 pub const MISSILE_LIFETIME_SECS: f32 = 2.5;
 pub const MISSILE_COLLIDER_RADIUS: f32 = 4.0;
 pub const MISSILE_SPREAD: f32 = 0.5; // 초기 부채꼴 반각(rad)
+
+// 특수무기 — 충격파 / 공격형 실드
+pub const SHOCKWAVE_RADIUS: f32 = 220.0;
+pub const SHOCKWAVE_IMPULSE: f32 = 380.0; // 밀쳐낼 속도(u/s)
+pub const SHOCKWAVE_RING_SECS: f32 = 0.35; // 링 연출 시간
+pub const SHIELD_BURST_SECS: f32 = 4.0;
+pub const BURST_FLASH_HZ: f32 = 12.0; // 우주선 번쩍임 토글 빈도(대략 Hz 감각)
+pub const BURST_PULSE: f32 = 0.05; // 크기 펄스 진폭(±5%)

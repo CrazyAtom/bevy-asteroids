@@ -307,6 +307,8 @@ fn debug_fill_hud(
         weapon.queue.push_back(SpecialWeaponKind::LaserBeam);
         weapon.queue.push_back(SpecialWeaponKind::ScatterNova);
         weapon.queue.push_back(SpecialWeaponKind::HomingMissile);
+        weapon.queue.push_back(SpecialWeaponKind::Shockwave);
+        weapon.queue.push_back(SpecialWeaponKind::ShieldBurst);
         commands.entity(entity).insert((
             Shield(Timer::from_seconds(999.0, TimerMode::Once)),
             RapidFire(Timer::from_seconds(999.0, TimerMode::Once)),
