@@ -62,7 +62,7 @@ mod tests {
         app.add_sub_state::<RunPhase>();
         app.insert_resource(ScreenShake { trauma: 1.0 });
         app.add_message::<ShakeEvent>();
-        app.add_systems(Update, apply_screen_shake);
+        app.add_systems(Update, apply_screen_shake.run_if(not(in_state(RunPhase::Paused))));
         app.world_mut().spawn((Camera2d, Transform::default()));
 
         // Playing/Running 진입 → 시간 진행 → trauma가 감쇠해야 한다
