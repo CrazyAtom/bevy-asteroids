@@ -5,7 +5,8 @@ mod banner;
 mod boss_bar;
 mod game_over;
 mod hud;
-mod menu;
+pub(crate) mod menu;
+mod title;
 
 use bevy::prelude::*;
 
@@ -17,6 +18,8 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<banner::LastStage>()
             .init_resource::<menu::MenuSelection>()
+            .add_systems(OnEnter(GameState::Title), title::spawn_title)
+            .add_systems(OnExit(GameState::Title), title::despawn_title)
             .add_systems(
                 OnEnter(GameState::Playing),
                 (hud::spawn_hud, boss_bar::spawn_boss_bar, banner::reset_last_stage),

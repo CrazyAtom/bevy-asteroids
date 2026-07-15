@@ -9,8 +9,8 @@ use crate::fx::audio::{Sfx, SfxEvent};
 #[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum GameState {
     #[default]
-    Playing,
     Title,
+    Playing,
     Restarting,
     GameOver,
 }
