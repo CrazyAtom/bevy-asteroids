@@ -305,6 +305,8 @@ fn debug_fill_hud(
     if let Ok((entity, mut weapon)) = players.single_mut() {
         lives.0 += 1;
         weapon.queue.push_back(SpecialWeaponKind::LaserBeam);
+        weapon.queue.push_back(SpecialWeaponKind::ScatterNova);
+        weapon.queue.push_back(SpecialWeaponKind::HomingMissile);
         commands.entity(entity).insert((
             Shield(Timer::from_seconds(999.0, TimerMode::Once)),
             RapidFire(Timer::from_seconds(999.0, TimerMode::Once)),

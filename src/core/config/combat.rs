@@ -20,3 +20,12 @@ pub const BEAM_LENGTH: f32 = 2000.0;
 
 // 특수무기 — 카트라이더 큐
 pub const HUD_QUEUE_SLOTS: usize = 5; // HUD에 표시할 큐 슬롯 수(내부 큐는 무제한)
+
+// 특수무기 — 산탄 노바 / 유도 미사일
+pub const NOVA_BULLETS: usize = 16; // 전방위 산탄 수
+pub const MISSILE_COUNT: usize = 5; // 발사 수
+pub const MISSILE_SPEED: f32 = 420.0;
+pub const MISSILE_TURN_RATE: f32 = 6.0; // 조향 상한(rad/s)
+pub const MISSILE_LIFETIME_SECS: f32 = 2.5;
+pub const MISSILE_COLLIDER_RADIUS: f32 = 4.0;
+pub const MISSILE_SPREAD: f32 = 0.5; // 초기 부채꼴 반각(rad)

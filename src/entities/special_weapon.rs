@@ -3,6 +3,8 @@
 //! 위임한다(새 무기 = 변형 추가 → 컴파일러가 모든 지점 강제).
 
 pub mod beam;
+pub mod missile;
+pub mod nova;
 
 use std::collections::VecDeque;
 
@@ -21,6 +23,8 @@ pub use beam::SpecialBeam; // collision·boss의 기존 경로 유지
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SpecialWeaponKind {
     LaserBeam,
+    ScatterNova,
+    HomingMissile,
 }
 
 /// 획득 순서(FIFO) 큐. 앞 = 다음 발동. 내부는 무제한, HUD는 앞 HUD_QUEUE_SLOTS개 표시.
@@ -33,12 +37,18 @@ pub struct SpecialWeapon {
 pub fn weapon_icon(kind: SpecialWeaponKind, assets: &SpriteAssets) -> Handle<Image> {
     match kind {
         SpecialWeaponKind::LaserBeam => assets.powerup[4].clone(),
+        SpecialWeaponKind::ScatterNova => assets.weapon_nova.clone(),
+        SpecialWeaponKind::HomingMissile => assets.weapon_missile.clone(),
     }
 }
 
 /// 특수무기 드롭 종류 추첨(roll 0..1 균등 버킷). 파워업 드롭에서 사용.
-pub fn pick_weapon_kind(_roll: f32) -> SpecialWeaponKind {
-    SpecialWeaponKind::LaserBeam
+pub fn pick_weapon_kind(roll: f32) -> SpecialWeaponKind {
+    match roll {
+        r if r < 1.0 / 3.0 => SpecialWeaponKind::LaserBeam,
+        r if r < 2.0 / 3.0 => SpecialWeaponKind::ScatterNova,
+        _ => SpecialWeaponKind::HomingMissile,
+    }
 }
 
 pub struct SpecialWeaponPlugin;
@@ -47,7 +57,8 @@ impl Plugin for SpecialWeaponPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (activate_special, beam::tick_beam).run_if(in_state(GameState::Playing)),
+            (activate_special, beam::tick_beam, missile::homing_steer)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -68,6 +79,10 @@ fn activate_special(
     let Some(kind) = weapon.queue.pop_front() else { return };
     match kind {
         SpecialWeaponKind::LaserBeam => beam::fire(&mut commands, &assets, transform),
+        SpecialWeaponKind::ScatterNova => {
+            nova::fire(&mut commands, &assets, transform.translation.truncate())
+        }
+        SpecialWeaponKind::HomingMissile => missile::fire(&mut commands, &assets, transform),
     }
     sfx.write(SfxEvent(Sfx::Special));
     shake.write(ShakeEvent(SHAKE_SPECIAL));
@@ -117,5 +132,38 @@ mod tests {
         app.world_mut().run_system_once(activate_special).unwrap();
         let mut beams = app.world_mut().query::<&SpecialBeam>();
         assert_eq!(beams.iter(app.world()).count(), 0);
+    }
+
+    #[test]
+    fn scatter_nova_spawns_nova_bullets() {
+        let mut app = app_with_input_and_assets(true);
+        app.world_mut().spawn((
+            Player,
+            Transform::default(),
+            SpecialWeapon { queue: VecDeque::from(vec![SpecialWeaponKind::ScatterNova]) },
+        ));
+        app.world_mut().run_system_once(activate_special).unwrap();
+        let mut bullets = app.world_mut().query::<&crate::entities::bullet::Bullet>();
+        assert_eq!(bullets.iter(app.world()).count(), crate::core::config::NOVA_BULLETS);
+    }
+
+    #[test]
+    fn homing_missile_spawns_missiles() {
+        let mut app = app_with_input_and_assets(true);
+        app.world_mut().spawn((
+            Player,
+            Transform::default(),
+            SpecialWeapon { queue: VecDeque::from(vec![SpecialWeaponKind::HomingMissile]) },
+        ));
+        app.world_mut().run_system_once(activate_special).unwrap();
+        let mut homing = app.world_mut().query::<&missile::Homing>();
+        assert_eq!(homing.iter(app.world()).count(), crate::core::config::MISSILE_COUNT);
+    }
+
+    #[test]
+    fn pick_weapon_kind_covers_three_buckets() {
+        assert_eq!(pick_weapon_kind(0.0), SpecialWeaponKind::LaserBeam);
+        assert_eq!(pick_weapon_kind(0.5), SpecialWeaponKind::ScatterNova);
+        assert_eq!(pick_weapon_kind(0.99), SpecialWeaponKind::HomingMissile);
     }
 }
