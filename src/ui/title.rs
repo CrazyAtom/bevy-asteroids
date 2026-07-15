@@ -61,7 +61,7 @@ pub(super) fn spawn_title(
     // 조작 힌트
     commands.spawn((
         TitleUi,
-        Text::new("\u{2191}\u{2193} SELECT   ENTER CONFIRM"),
+        Text::new("UP/DOWN SELECT   ENTER CONFIRM"),
         TextFont { font_size: FontSize::Px(20.0), ..default() },
         TextColor(Color::srgb(0.45, 0.45, 0.45)),
         Node {

@@ -83,7 +83,7 @@ pub fn menu_activate(
     }
 }
 
-/// 선택 항목은 밝은 금빛 + "▶ " 프리픽스, 나머지는 흐리게.
+/// 선택 항목은 밝은 금빛 + "> " 프리픽스, 나머지는 흐리게.
 /// 색값 > 1.0은 HDR+Bloom(카메라에 설정됨) 지원 시 발광한다.
 pub fn highlight_menu(
     selection: Res<MenuSelection>,
@@ -91,7 +91,7 @@ pub fn highlight_menu(
 ) {
     for (item, mut text, mut color) in &mut items {
         if item.index == selection.index {
-            *text = Text::new(format!("\u{25B6} {}", item.label));
+            *text = Text::new(format!("> {}", item.label));
             color.0 = Color::srgb(1.5, 1.2, 0.3);
         } else {
             *text = Text::new(item.label.to_string());
