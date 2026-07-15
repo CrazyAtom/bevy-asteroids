@@ -78,5 +78,15 @@ mod tests {
         let count = app.world_mut().query::<&MenuItem>().iter(app.world()).count();
         assert_eq!(count, 2, "게임오버 메뉴는 RESTART/QUIT TO TITLE 2항목");
         assert_eq!(app.world().resource::<MenuSelection>().count, 2);
+
+        let mut items: Vec<(usize, MenuAction)> = app
+            .world_mut()
+            .query::<&MenuItem>()
+            .iter(app.world())
+            .map(|item| (item.index, item.action))
+            .collect();
+        items.sort_by_key(|(index, _)| *index);
+
+        assert_eq!(items, vec![(0, MenuAction::Restart), (1, MenuAction::QuitToTitle)]);
     }
 }
