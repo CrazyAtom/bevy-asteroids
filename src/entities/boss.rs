@@ -1,23 +1,25 @@
-use std::time::Duration;
+//! 보스 공통 인프라: 종류(`BossKind`)·데이터(체력/반경/주기)·스폰·전투(피해/격파)·
+//! 이동/공격 디스패치. **보스별 전용 로직은 서브모듈**(`golem`·`tesla`·`singularity`)에 있고,
+//! 여기의 match 디스패치가 각 모듈로 위임한다(새 보스 = 변형 추가 → 컴파일러가 모든 지점 강제).
+
+pub mod golem;
+pub mod singularity;
+pub mod tesla;
 
 use bevy::prelude::*;
 
 use crate::core::components::{Collider, EdgeReflect, Velocity};
 use crate::core::config::{
-    BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BLINK_INTERVAL, BLINK_TELEGRAPH_SECS,
-    BOSS_BASE_HEALTH, BOSS_ENTRANCE_SHAKE, BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK,
-    BULLET_BOSS_DAMAGE, EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED,
-    GOLEM_STEER, GRAVITY_INTENSIFY, GRAVITY_STRENGTH, ICE_GOLEM_HEALTH_MUL, SHAKE_EXPLOSION,
-    SINGULARITY_ATTACK_INTERVAL, SINGULARITY_HEALTH_MUL, SPIRAL_ARMS, SPIRAL_STEP,
-    STORM_EMP_THRESHOLD, TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL, UFO_BULLET_SPEED, Z_ENTITY,
+    BEAM_BOSS_DAMAGE, BEAM_LENGTH, BEAM_WIDTH, BLINK_INTERVAL, BOSS_BASE_HEALTH,
+    BOSS_ENTRANCE_SHAKE, BOSS_HEALTH_PER_CYCLE, BOSS_SCORE_BONUS, BOSS_TRACK, BULLET_BOSS_DAMAGE,
+    EXPLOSION_PARTICLES, GOLEM_ATTACK_INTERVAL, GOLEM_DRIFT_SPEED, GOLEM_STEER,
+    ICE_GOLEM_HEALTH_MUL, LUNGE_INTERVAL, SHAKE_EXPLOSION, SINGULARITY_ATTACK_INTERVAL,
+    SINGULARITY_HEALTH_MUL, STARTING_LIVES, TESLA_ATTACK_INTERVAL, TESLA_HEALTH_MUL,
+    UFO_BULLET_SPEED, Z_ENTITY,
 };
-use crate::core::logic::{
-    aim_direction, circles_overlap, gravity_boost, segment_circle_hit, storm_pulse, AsteroidSize,
-};
-use crate::core::config::STARTING_LIVES;
+use crate::core::logic::{aim_direction, circles_overlap, segment_circle_hit, AsteroidSize};
 use crate::core::state::{GameState, GameplayEntity, Lives, Score};
 use crate::entities::asteroid::{random_velocity, spawn_asteroid};
-use crate::entities::black_hole::BlackHoleActive;
 use crate::entities::bullet::{spawn_enemy_bullet, Bullet};
 use crate::entities::player::Player;
 use crate::entities::special_weapon::SpecialBeam;
@@ -118,11 +120,11 @@ pub fn spawn_boss(commands: &mut Commands, assets: &SpriteAssets, kind: BossKind
         e.insert((Velocity(Vec2::new(GOLEM_DRIFT_SPEED, GOLEM_DRIFT_SPEED * 0.55)), EdgeReflect));
     }
     if kind == BossKind::TeslaCore {
-        e.insert(Blink { timer: Timer::from_seconds(BLINK_INTERVAL, TimerMode::Repeating) });
+        e.insert(tesla::Blink { timer: Timer::from_seconds(BLINK_INTERVAL, TimerMode::Repeating) });
     }
     if kind == BossKind::SingularityCore {
-        e.insert(Lunge {
-            timer: Timer::from_seconds(crate::core::config::LUNGE_INTERVAL, TimerMode::Repeating),
+        e.insert(singularity::Lunge {
+            timer: Timer::from_seconds(LUNGE_INTERVAL, TimerMode::Repeating),
             target: Vec2::ZERO,
             charging: false,
         });
@@ -141,50 +143,10 @@ fn attack_interval(kind: BossKind) -> f32 {
     }
 }
 
-/// storm_pulse가 임계를 상향 돌파하는 순간만 true(EMP 1회 발동용 상승 엣지).
-pub fn storm_emp_triggers(prev_pulse: f32, cur_pulse: f32) -> bool {
-    prev_pulse < STORM_EMP_THRESHOLD && cur_pulse >= STORM_EMP_THRESHOLD
-}
-
-/// 골렘 공격 교대: 짝수 발 = 팔 휘두르기(부채꼴 파편), 홀수 발 = 내려찍기(방사 탄).
-pub fn golem_attack_is_sweep(shots: u32) -> bool {
-    shots.is_multiple_of(2)
-}
-
-/// 체력 비율로 골렘 페이즈 산출: >2/3 → 0, >1/3 → 1, 그 이하 → 2.
-pub fn golem_phase(health: f32, max_health: f32) -> u8 {
-    let r = if max_health > 0.0 { health / max_health } else { 0.0 };
-    if r > 2.0 / 3.0 {
-        0
-    } else if r > 1.0 / 3.0 {
-        1
-    } else {
-        2
-    }
-}
-
-pub fn golem_scale(phase: u8) -> f32 {
-    [1.0, 0.8, 0.62][phase.min(2) as usize]
-}
-
-pub fn golem_speed_mul(phase: u8) -> f32 {
-    [1.0, 1.35, 1.75][phase.min(2) as usize]
-}
-
-pub fn golem_attack_mul(phase: u8) -> f32 {
-    [1.0, 0.8, 0.62][phase.min(2) as usize]
-}
-
 #[derive(Component)]
 pub struct BossAttack {
     pub timer: Timer,
     pub shots: u32,
-}
-
-/// 테슬라 코어 순간이동 타이머.
-#[derive(Component)]
-pub struct Blink {
-    pub timer: Timer,
 }
 
 pub struct BossPlugin;
@@ -197,12 +159,12 @@ impl Plugin for BossPlugin {
                 boss_movement,
                 boss_attack,
                 boss_combat,
-                golem_phase_transition,
                 boss_entrance,
-                boss_blink,
-                storm_emp,
-                singularity_gravity_pulse,
-                singularity_lunge,
+                golem::golem_phase_transition,
+                tesla::boss_blink,
+                tesla::storm_emp,
+                singularity::singularity_gravity_pulse,
+                singularity::singularity_lunge,
             )
                 .run_if(in_state(GameState::Playing)),
         );
@@ -256,9 +218,9 @@ fn boss_movement(
                     }
                 }
             }
-            // 테슬라 코어: 블링크(boss_blink)가 위치를 옮김. 여기선 조작 없음.
+            // 테슬라 코어: 블링크(tesla::boss_blink)가 위치를 옮김. 여기선 조작 없음.
             BossKind::TeslaCore => {}
-            // 특이점 코어: 이동은 singularity_lunge가 담당(홈 부유 + 주기적 돌진).
+            // 특이점 코어: 이동은 singularity::singularity_lunge가 담당(홈 부유 + 주기적 돌진).
             BossKind::SingularityCore => {}
         }
     }
@@ -276,7 +238,7 @@ fn boss_entrance(
     }
 }
 
-/// 보스 종류별 주기적 공격.
+/// 보스 종류별 주기적 공격(디스패치). 전용 로직이 있는 보스는 서브모듈 attack으로 위임.
 fn boss_attack(
     mut commands: Commands,
     assets: Res<SpriteAssets>,
@@ -324,47 +286,12 @@ fn boss_attack(
                     spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
                 }
             }
-            // 얼음 골렘: 팔 휘두르기(부채꼴 파편) ↔ 내려찍기(방사 탄) 교대.
-            BossKind::IceGolem => {
-                if golem_attack_is_sweep(shots) {
-                    // 팔 휘두르기: 조준 방향 ±35° 부채꼴로 소형 소행성 파편 5개(벽 반사).
-                    let base = player_pos
-                        .map(|pp| aim_direction(pos, pp))
-                        .unwrap_or(Vec2::NEG_Y);
-                    for a in [-0.61f32, -0.305, 0.0, 0.305, 0.61] {
-                        let d = (Quat::from_rotation_z(a) * base.extend(0.0)).truncate();
-                        let size = AsteroidSize::Small;
-                        spawn_asteroid(&mut commands, &assets, size, pos, d * random_velocity(size).length());
-                    }
-                } else {
-                    // 내려찍기: 방사형 얼음 탄 12발.
-                    let n = 12;
-                    for i in 0..n {
-                        let ang = i as f32 / n as f32 * std::f32::consts::TAU;
-                        let d = Vec2::new(ang.cos(), ang.sin());
-                        spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
-                    }
-                }
-            }
-            // 테슬라 코어: 조준 체인 전격(EMP는 폭풍 피크에 동기화되어 storm_emp에서 발동).
-            BossKind::TeslaCore => {
-                if let Some(pp) = player_pos {
-                    let dir = aim_direction(pos, pp);
-                    for a in [-0.25f32, 0.0, 0.25] {
-                        let d = (Quat::from_rotation_z(a) * dir.extend(0.0)).truncate();
-                        spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
-                    }
-                }
-            }
-            // 특이점 코어: 회전하는 방사 = 나선 탄.
-            BossKind::SingularityCore => {
-                let base = shots as f32 * SPIRAL_STEP;
-                for i in 0..SPIRAL_ARMS {
-                    let ang = base + i as f32 / SPIRAL_ARMS as f32 * std::f32::consts::TAU;
-                    let d = Vec2::new(ang.cos(), ang.sin());
-                    spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
-                }
-            }
+            // 얼음 골렘: 팔 휘두르기 ↔ 내려찍기 교대(golem 모듈).
+            BossKind::IceGolem => golem::attack(&mut commands, &assets, pos, player_pos, shots),
+            // 테슬라 코어: 조준 체인 전격(EMP는 폭풍 피크 동기, tesla::storm_emp).
+            BossKind::TeslaCore => tesla::attack(&mut commands, &assets, pos, player_pos),
+            // 특이점 코어: 회전하는 방사 = 나선 탄(singularity 모듈).
+            BossKind::SingularityCore => singularity::attack(&mut commands, &assets, pos, shots),
         }
     }
 }
@@ -422,176 +349,6 @@ fn boss_combat(
     }
 }
 
-/// 골렘이 체력 구간을 넘으면 껍질이 깨진다: 스프라이트/콜라이더 축소, 가속, 공격 주기 단축, 파편 폭발 연출.
-#[allow(clippy::type_complexity)]
-fn golem_phase_transition(
-    mut commands: Commands,
-    assets: Res<SpriteAssets>,
-    mut shake: MessageWriter<ShakeEvent>,
-    mut q: Query<(&mut Boss, &mut Sprite, &mut Collider, &mut Velocity, &mut BossAttack, &Transform)>,
-) {
-    for (mut boss, mut sprite, mut collider, mut velocity, mut atk, tf) in &mut q {
-        if boss.kind != BossKind::IceGolem {
-            continue;
-        }
-        let want = golem_phase(boss.health, boss.max_health);
-        if want <= boss.phase {
-            continue;
-        }
-        boss.phase = want;
-        let base_r = boss_radius(BossKind::IceGolem);
-        let scale = golem_scale(want);
-        sprite.custom_size = Some(Vec2::splat(base_r * 2.0 * scale));
-        collider.radius = base_r * scale;
-        // 가속: 방향 유지, 속력만 페이즈 배율로.
-        let dir = velocity.0.normalize_or_zero();
-        velocity.0 = dir * GOLEM_DRIFT_SPEED * golem_speed_mul(want);
-        // 공격 주기 단축.
-        let interval = attack_interval(BossKind::IceGolem) * golem_attack_mul(want);
-        atk.timer.set_duration(Duration::from_secs_f32(interval));
-        // 껍질 깨짐 연출.
-        let pos = tf.translation.truncate();
-        spawn_explosion(&mut commands, &assets, pos, EXPLOSION_PARTICLES);
-        shake.write(ShakeEvent(SHAKE_EXPLOSION * 1.5));
-    }
-}
-
-/// 테슬라 코어 블링크: 타이머마다 화면 내 임의 위치로 순간이동. 순간이동 직전엔 예고로 축소했다가
-/// 이동 직후 원복한다.
-fn boss_blink(
-    time: Res<Time>,
-    mut sfx: MessageWriter<SfxEvent>,
-    mut shake: MessageWriter<ShakeEvent>,
-    mut q: Query<(&mut Transform, &mut Sprite, &mut Blink), With<Boss>>,
-) {
-    use rand::RngExt;
-    let base = boss_radius(BossKind::TeslaCore) * 2.0;
-    for (mut tf, mut sprite, mut blink) in &mut q {
-        blink.timer.tick(time.delta());
-        // 예고: 순간이동 직전 축소
-        let remain = blink.timer.remaining_secs();
-        let scale = if remain < BLINK_TELEGRAPH_SECS { 0.6 } else { 1.0 };
-        sprite.custom_size = Some(Vec2::splat(base * scale));
-        if blink.timer.is_finished() {
-            let mut rng = rand::rng();
-            tf.translation.x = rng.random_range(-crate::core::config::HALF_WIDTH * 0.8..crate::core::config::HALF_WIDTH * 0.8);
-            tf.translation.y = rng.random_range(0.0..crate::core::config::HALF_HEIGHT * 0.7);
-            sprite.custom_size = Some(Vec2::splat(base)); // 원복
-            // 순간이동 피드백: 워프 사운드 + 소폭 흔들림(무음 예고 방지 — 적대적 리뷰 반영).
-            sfx.write(SfxEvent(Sfx::Hyperspace));
-            shake.write(ShakeEvent(SHAKE_EXPLOSION));
-        }
-    }
-}
-
-/// 폭풍 피크(storm_pulse 상승 엣지)에 테슬라 코어가 EMP 방사 링을 쏜다.
-fn storm_emp(
-    mut commands: Commands,
-    assets: Res<SpriteAssets>,
-    time: Res<Time>,
-    mut prev: Local<f32>,
-    mut shake: MessageWriter<ShakeEvent>,
-    bosses: Query<(&Boss, &Transform)>,
-) {
-    let cur = storm_pulse(time.elapsed_secs());
-    let fire = storm_emp_triggers(*prev, cur);
-    *prev = cur;
-    if !fire {
-        return;
-    }
-    let mut fired = false;
-    for (boss, tf) in &bosses {
-        if boss.kind != BossKind::TeslaCore {
-            continue;
-        }
-        let pos = tf.translation.truncate();
-        let n = 14;
-        for i in 0..n {
-            let ang = i as f32 / n as f32 * std::f32::consts::TAU;
-            let d = Vec2::new(ang.cos(), ang.sin());
-            spawn_enemy_bullet(&mut commands, &assets, pos, d * UFO_BULLET_SPEED);
-        }
-        fired = true;
-    }
-    if fired {
-        shake.write(ShakeEvent(SHAKE_EXPLOSION));
-    }
-}
-
-/// 특이점 코어가 존재하면 블랙홀 흡인력을 주기적으로 강화한다(gravity_boost). 없으면 기본 세기.
-fn singularity_gravity_pulse(
-    time: Res<Time>,
-    mut bh: ResMut<BlackHoleActive>,
-    mut shake: MessageWriter<ShakeEvent>,
-    mut surging: Local<bool>,
-    bosses: Query<&Boss>,
-) {
-    let has_singularity = bosses.iter().any(|b| b.kind == BossKind::SingularityCore);
-    if !has_singularity {
-        bh.strength = GRAVITY_STRENGTH;
-        *surging = false;
-        return;
-    }
-    let boost = gravity_boost(time.elapsed_secs());
-    bh.strength = GRAVITY_STRENGTH * boost;
-    // 흡인 강화가 피크로 치솟는 순간(상승 엣지) 화면을 흔들어 '중력 파동'을 체감시킨다(임팩트).
-    let near_peak = boost > 1.0 + (GRAVITY_INTENSIFY - 1.0) * 0.6;
-    if near_peak && !*surging {
-        shake.write(ShakeEvent(SHAKE_EXPLOSION * 2.0));
-        *surging = true;
-    } else if !near_peak {
-        *surging = false;
-    }
-}
-
-/// 특이점 코어 러쉬 타이머·목표. 대부분 홈(중앙 블랙홀 위)에서 부유하다 주기 끝에 플레이어로 돌진.
-#[derive(Component)]
-pub struct Lunge {
-    pub timer: Timer,
-    pub target: Vec2,
-    pub charging: bool,
-}
-
-/// 특이점 코어가 가만히 있지 않도록: 대부분 홈에서 부유하다 주기적으로 플레이어를 향해
-/// 블랙홀 밖으로 돌진했다 복귀한다(덮치는 위협). 사이엔 다시 중앙에 앉아 흡인을 지속.
-fn singularity_lunge(
-    time: Res<Time>,
-    players: Query<&Transform, (With<Player>, Without<Boss>)>,
-    mut q: Query<(&mut Transform, &mut Lunge), With<Boss>>,
-) {
-    let t = time.elapsed_secs();
-    let player_pos = players.single().ok().map(|p| p.translation.truncate());
-    let home = Vec2::new(0.0, crate::core::config::BLACK_HOLE_POS_Y);
-    for (mut tf, mut lunge) in &mut q {
-        lunge.timer.tick(time.delta());
-        let dur = lunge.timer.duration().as_secs_f32();
-        let f = if dur > 0.0 { lunge.timer.elapsed_secs() / dur } else { 0.0 };
-        let pos = if f < 0.65 {
-            // 홈에서 약한 부유
-            lunge.charging = false;
-            home + Vec2::new((t * 0.7).sin() * 16.0, (t * 1.1).sin() * 10.0)
-        } else {
-            // 돌진 창(0.65..1.0): 진입 시 플레이어 방향 목표 캡처, sin으로 나갔다 복귀
-            if !lunge.charging {
-                let dir = player_pos
-                    .map(|pp| (pp - home).normalize_or_zero())
-                    .unwrap_or(Vec2::NEG_Y);
-                // 목적지를 화면 안(보스 반경 여유 70)으로 클램프해 상단 등으로 돌출하지 않게 한다.
-                let hw = crate::core::config::HALF_WIDTH - 70.0;
-                let hh = crate::core::config::HALF_HEIGHT - 70.0;
-                let dest = (home + dir * crate::core::config::LUNGE_DIST)
-                    .clamp(Vec2::new(-hw, -hh), Vec2::new(hw, hh));
-                lunge.target = dest - home;
-                lunge.charging = true;
-            }
-            let p = (f - 0.65) / 0.35;
-            home + lunge.target * (p * std::f32::consts::PI).sin()
-        };
-        tf.translation.x = pos.x;
-        tf.translation.y = pos.y;
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -627,29 +384,6 @@ mod tests {
     }
 
     #[test]
-    fn golem_alternates_sweep_and_slam() {
-        assert!(golem_attack_is_sweep(0)); // 첫 발 = 팔 휘두르기
-        assert!(!golem_attack_is_sweep(1)); // 다음 = 내려찍기
-        assert!(golem_attack_is_sweep(2));
-    }
-
-    #[test]
-    fn golem_phase_thresholds() {
-        let m = 30.0;
-        assert_eq!(golem_phase(30.0, m), 0); // 만피
-        assert_eq!(golem_phase(20.1, m), 0); // >2/3
-        assert_eq!(golem_phase(15.0, m), 1); // 1/3~2/3
-        assert_eq!(golem_phase(5.0, m), 2); // <1/3
-    }
-
-    #[test]
-    fn golem_phase_scales_monotonic() {
-        assert!(golem_scale(2) < golem_scale(0)); // 작아짐
-        assert!(golem_speed_mul(2) > golem_speed_mul(0)); // 빨라짐
-        assert!(golem_attack_mul(2) < golem_attack_mul(0)); // 주기 짧아짐
-    }
-
-    #[test]
     fn track_pulls_toward_player_and_holds_without() {
         assert!((track(0.0, Some(100.0), 0.5) - 50.0).abs() < 1e-4); // 절반 당김
         assert_eq!(track(30.0, None, 0.5), 30.0); // 플레이어 없으면 패턴 유지
@@ -660,15 +394,6 @@ mod tests {
     fn tesla_core_is_em_storm_boss() {
         assert_eq!(boss_for_theme(ThemeId::EmStorm), BossKind::TeslaCore);
         assert!(boss_max_health(BossKind::TeslaCore, 0) > 0.0);
-    }
-
-    #[test]
-    fn emp_triggers_on_rising_edge_only() {
-        // 임계 아래→위로 오를 때만 true(상승 엣지), 이미 위이거나 내려갈 땐 false.
-        assert!(storm_emp_triggers(0.5, 0.7)); // 상승 돌파
-        assert!(!storm_emp_triggers(0.7, 0.8)); // 이미 위
-        assert!(!storm_emp_triggers(0.8, 0.5)); // 하강
-        assert!(!storm_emp_triggers(0.3, 0.5)); // 아래 유지
     }
 
     #[test]

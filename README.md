@@ -106,33 +106,41 @@ cargo clippy --all-targets -- -D warnings   # 경고 0 유지
 
 ```
 src/
-├── main.rs              # App 조립: 플러그인 등록, 윈도우/카메라, 에셋 경로
-├── ui.rs                # HUD(아이콘), 배너, 보스 체력 바, 게임오버, 재시작
-├── core/                # 게임 오브젝트와 무관한 코어
-│   ├── config.rs        #   모든 튜닝 상수(속도·크기·난이도·타이밍·Z레이어)
-│   ├── logic.rs         #   순수 함수 + AsteroidSize (Bevy 무관, 단위 테스트 대상)
-│   ├── components.rs    #   공유 컴포넌트: Velocity, AngularVelocity, Collider, Wrapping
-│   └── state.rs         #   GameState, 리소스(Score/Lives/HighScore), reset_game
-├── entities/            # 게임 오브젝트 (각 모듈 = 컴포넌트 + 스폰 + 플러그인 + 시스템)
-│   ├── player.rs        #   우주선: 입력·추진·화염·실드·하이퍼스페이스
-│   ├── special_weapon.rs #  특수무기(X): 발동·레이저 빔·수명
-│   ├── asteroid.rs      #   소행성 스폰/분열
-│   ├── bullet.rs        #   총알(아군/적)
-│   ├── ufo.rs           #   적 UFO
-│   ├── powerup.rs       #   파워업 5종 + 자석
-│   └── boss.rs          #   보스(종류별 이동/공격/체력/격파)
-├── systems/             # 엔티티 교차 시스템
-│   ├── movement.rs      #   속도 적분·회전·화면 순환 (FixedUpdate)
-│   ├── collision.rs     #   충돌·피격·보스 전투
-│   └── stage.rs         #   진행(Progression)·스테이지/테마/보스 오케스트레이션
-└── fx/                  # 연출·에셋
-    ├── sprites.rs       #   SpriteAssets(모든 스프라이트 핸들) + 크기 매핑
-    ├── animation.rs     #   프레임 애니메이션(폭발)
-    ├── audio.rs         #   효과음 재생
-    ├── background.rs    #   테마별 배경
-    ├── effects.rs       #   파티클
-    └── shake.rs         #   화면 흔들림
+├── main.rs               # App 조립: 플러그인 등록, 윈도우/카메라, 에셋 경로
+├── ui.rs                 # UiPlugin 루트(서브모듈 시스템 등록)
+├── ui/                   #   hud(점수·하트·충전·배지) · boss_bar · banner · game_over
+├── core/                 # 게임 오브젝트와 무관한 코어
+│   ├── config.rs         #   튜닝 상수 루트(재수출) — 밸런스/튜닝은 전부 하위 도메인 파일에서
+│   ├── config/           #     ship · combat · world · render · stage(테마 트위스트) · boss
+│   ├── logic.rs          #   순수 함수 루트(재수출) + AsteroidSize·공통 유틸 (Bevy App 무관)
+│   ├── logic/            #     geometry(판정) · difficulty(난이도 공식) · env(폭풍/중력 커브)
+│   ├── components.rs     #   공유 컴포넌트: Velocity·AngularVelocity·Collider·Wrapping·EdgeReflect·GravityBody
+│   └── state.rs          #   GameState, 리소스(Score/Lives/HighScore), reset_game
+├── entities/             # 게임 오브젝트 (각 모듈 = 컴포넌트 + 스폰 + 플러그인 + 시스템)
+│   ├── player.rs         #   우주선: 입력·추진·화염·실드·하이퍼스페이스
+│   ├── special_weapon.rs #   특수무기(X): 발동·레이저 빔·수명
+│   ├── asteroid.rs       #   소행성 스폰/분열
+│   ├── bullet.rs         #   총알(아군/적)
+│   ├── ufo.rs            #   적 UFO
+│   ├── powerup.rs        #   파워업 5종 + 자석
+│   ├── black_hole.rs     #   블랙홀 중력장(흡인·사건의 지평선, 블랙홀 테마)
+│   ├── boss.rs           #   보스 공통(종류/데이터/스폰/전투) + 이동·공격 디스패치
+│   └── boss/             #     golem · tesla · singularity (보스별 전용 로직)
+├── systems/              # 엔티티 교차 시스템
+│   ├── movement.rs       #   속도 적분·회전·화면 순환/벽 반사 (FixedUpdate)
+│   ├── collision.rs      #   충돌·피격·보스 전투
+│   └── stage.rs          #   진행(Progression)·테마/보스 오케스트레이션·환경 동기화
+└── fx/                   # 연출·에셋
+    ├── sprites.rs        #   SpriteAssets(모든 스프라이트 핸들) + 크기 매핑
+    ├── animation.rs      #   프레임 애니메이션(폭발)
+    ├── audio.rs          #   효과음 재생
+    ├── background.rs     #   테마별 배경
+    ├── fog.rs            #   시야 제한 안개(전자기폭풍 테마)
+    ├── effects.rs        #   파티클
+    └── shake.rs          #   화면 흔들림
 ```
+
+> 구조 규칙: **폴더 = 기능, 파일 = 변형/관심사.** 한 기능 안에서 변형(보스 종류, 도메인 상수)이 늘어 파일이 비대해지면 서브모듈로 나누고, 루트 파일은 공유 인프라·디스패치·재수출만 담당합니다(예: `entities/boss/`, `core/config/`).
 
 빌드/에셋:
 

@@ -8,6 +8,7 @@
 - **`animation.rs`** — `FrameAnimation`(프레임 이미지 스왑) + `next_frame_index`(순수) + `spawn_explosion_anim`. 마지막 프레임 뒤 despawn.
 - **`audio.rs`** — `Sfx` enum + `SfxEvent`(Message) + `play_sfx`(Bevy `AudioPlayer`). 효과음은 이벤트로 요청.
 - **`background.rs`** — 테마별 배경 스프라이트 교체(`update_theme_background`, 상태 비의존 비교).
+- **`fog.rs`** — 시야 제한 안개(전자기폭풍 테마). `FogState` 리소스(기본 off, stage의 `sync_fog_state`가 켬), 오버레이가 우주선 추적 + `storm_vision_scale`로 시야창 진동. 가시성 시스템은 상태 무관 상시 실행(게임오버 잔상 방지 패턴).
 - **`effects.rs`** — 파티클(`spawn_explosion` = 스파크 파티클 + 애니 폭발), 수명/페이드.
 - **`shake.rs`** — trauma 기반 카메라 오프셋. `ShakeEvent`로 트리거, 시간 감쇠.
 
