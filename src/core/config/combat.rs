@@ -36,4 +36,4 @@ pub const SHOCKWAVE_IMPULSE: f32 = 380.0; // 밀쳐낼 속도(u/s)
 pub const SHOCKWAVE_RING_SECS: f32 = 0.35; // 링 연출 시간
 pub const SHIELD_BURST_SECS: f32 = 4.0;
 pub const BURST_FLASH_HZ: f32 = 12.0; // 우주선 번쩍임 토글 빈도(대략 Hz 감각)
-pub const BURST_PULSE: f32 = 0.05; // 크기 펄스 진폭(±5%)
+pub const BURST_PULSE: f32 = 0.12; // 크기 펄스 진폭(±12%)

@@ -4,6 +4,9 @@ mod fx;
 mod systems;
 mod ui;
 
+use bevy::camera::Hdr;
+use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 use bevy_persistent::prelude::*;
 
@@ -54,7 +57,14 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    // HDR + Bloom으로 색값 1.0 초과 스프라이트(공격형 실드 우주선 등)를 실제 발광시킨다.
+    // Tonemapping::None으로 나머지(LDR) 스프라이트 색은 그대로 유지해 게임 전체 룩은 불변.
+    commands.spawn((
+        Camera2d,
+        Hdr, // HDR 중간 렌더 텍스처 활성(0.19: Camera.hdr 필드 대신 마커 컴포넌트)
+        Tonemapping::None,
+        Bloom { intensity: 0.3, ..default() },
+    ));
 }
 
 fn setup_high_score(mut commands: Commands) {

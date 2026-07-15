@@ -55,10 +55,11 @@ pub(super) fn burst_tick(
             continue;
         }
         let t = time.elapsed_secs();
+        // HDR 금빛(색값 1.0 초과)으로 우주선을 실제 발광(bloom)시킨다. 두 밝기를 오가 '빛나는 오라'.
         sprite.color = if burst_flash_on(t) {
-            Color::srgb(1.0, 0.75, 0.3) // 주황 섬광
+            Color::srgb(4.2, 3.3, 1.3) // 밝은 금빛 발광
         } else {
-            Color::WHITE
+            Color::srgb(2.6, 2.0, 0.85) // 약한 금빛 발광
         };
         sprite.custom_size = Some(sprite_size_for(SHIP_COLLIDER_RADIUS) * burst_pulse_scale(t));
     }
