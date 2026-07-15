@@ -83,6 +83,7 @@ pub(super) fn despawn_title(mut commands: Commands, query: Query<Entity, With<Ti
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::ecs::system::RunSystemOnce;
     use crate::core::state::{GameState, GameStatePlugin};
 
     #[test]
@@ -92,5 +93,41 @@ mod tests {
         app.add_plugins(GameStatePlugin);
         app.update();
         assert_eq!(*app.world().resource::<State<GameState>>().get(), GameState::Title);
+    }
+
+    #[test]
+    fn spawn_title_creates_two_menu_items_with_expected_actions() {
+        let dir = std::env::temp_dir().join("bevy-asteroids-spawn-title-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("highscore.json");
+
+        let hs = Persistent::<HighScore>::builder()
+            .name("test high score spawn title")
+            .format(StorageFormat::Json)
+            .path(path)
+            .default(HighScore(0))
+            .build()
+            .unwrap();
+
+        let mut app = App::new();
+        app.insert_resource(hs);
+        app.insert_resource(MenuSelection::default());
+        app.world_mut().run_system_once(spawn_title).unwrap();
+
+        let mut items: Vec<(usize, MenuAction)> = app
+            .world_mut()
+            .query::<&MenuItem>()
+            .iter(app.world())
+            .map(|item| (item.index, item.action))
+            .collect();
+        items.sort_by_key(|(index, _)| *index);
+
+        assert_eq!(items, vec![(0, MenuAction::StartGame), (1, MenuAction::QuitApp)]);
+
+        let selection = app.world().resource::<MenuSelection>();
+        assert_eq!(selection.index, 0);
+        assert_eq!(selection.count, 2);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
