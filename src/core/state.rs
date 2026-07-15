@@ -8,12 +8,13 @@ use crate::fx::audio::{Sfx, SfxEvent};
 
 // `Title`과 `RunPhase::Paused`는 이 태스크(상태 뼈대)에서는 아직 어떤 시스템도 진입시키지
 // 않는다(타이틀 화면·일시정지 입력 배선은 후속 태스크). 프로덕션 코드에서 미사용이라
-// clippy dead_code 경고가 뜨므로 명시적으로 allow. resume_does_not_reset_score /
-// restart_via_bounce_resets_score 테스트가 `Paused`/`Restarting` 전이를 검증한다.
+// clippy dead_code 경고가 뜨므로 명시적으로 allow.
 #[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
 pub enum GameState {
     #[default]
     Playing,
+    /// 후속 태스크(타이틀 화면 배선)까지 미사용. restart_via_bounce_resets_score
+    /// 테스트가 `Restarting` 전이를 검증한다.
     #[allow(dead_code)]
     Title,
     Restarting,
@@ -26,6 +27,8 @@ pub enum GameState {
 pub enum RunPhase {
     #[default]
     Running,
+    /// 후속 태스크(일시정지 입력 배선)까지 미사용. resume_does_not_reset_score /
+    /// gameplay_systems_freeze_when_paused 테스트가 `Paused` 전이·게이팅을 검증한다.
     #[allow(dead_code)]
     Paused,
 }
@@ -174,5 +177,50 @@ mod tests {
         app.update(); // Restarting→Playing: OnEnter(Playing) reset_game → 0
         assert_eq!(app.world().resource::<Score>().0, 0, "재시작은 점수를 0으로 리셋해야 한다");
         assert_eq!(*app.world().resource::<State<GameState>>().get(), GameState::Playing);
+    }
+
+    #[test]
+    fn gameplay_systems_freeze_when_paused() {
+        #[derive(Resource, Default)]
+        struct ProbeTicks(u32);
+
+        fn probe(mut t: ResMut<ProbeTicks>) {
+            t.0 += 1;
+        }
+
+        let mut app = App::new();
+        app.add_plugins(bevy::state::app::StatesPlugin);
+        app.init_state::<GameState>();
+        app.add_sub_state::<RunPhase>();
+        app.init_resource::<ProbeTicks>();
+        // 실제 게임플레이 시스템과 동일한 게이팅으로 프로브 등록
+        app.add_systems(Update, probe.run_if(in_state(RunPhase::Running)));
+
+        // Playing/Running 진입 → 프로브 실행
+        app.world_mut().resource_mut::<NextState<GameState>>().set(GameState::Playing);
+        app.update();
+        assert!(
+            app.world().resource::<ProbeTicks>().0 >= 1,
+            "Running 중에는 게임플레이 시스템이 돌아야 한다"
+        );
+
+        // 일시정지 → 프로브 정지
+        app.world_mut().resource_mut::<NextState<RunPhase>>().set(RunPhase::Paused);
+        app.update();
+        let frozen = app.world().resource::<ProbeTicks>().0;
+        app.update();
+        assert_eq!(
+            app.world().resource::<ProbeTicks>().0,
+            frozen,
+            "일시정지 중에는 게임플레이 시스템이 멈춰야 한다"
+        );
+
+        // 재개 → 다시 실행
+        app.world_mut().resource_mut::<NextState<RunPhase>>().set(RunPhase::Running);
+        app.update();
+        assert!(
+            app.world().resource::<ProbeTicks>().0 > frozen,
+            "재개하면 다시 돌아야 한다"
+        );
     }
 }
