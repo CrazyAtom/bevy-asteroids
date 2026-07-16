@@ -6,7 +6,16 @@
     <title>Bevy Asteroids</title>
     <style>
         html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
-        canvas { display: block; width: 100vw; height: 100vh; }
+        /* 게임은 1280x720(16:9)로 렌더된다. 캔버스를 16:9 유지한 채 창에 맞춰
+           스케일하고 중앙에 두어(레터박스), UI가 게임 화면 안에만 존재하게 한다. */
+        body { display: flex; align-items: center; justify-content: center; }
+        canvas {
+            display: block;
+            aspect-ratio: 16 / 9;
+            width: 100vw;
+            height: auto;
+            max-height: 100vh;
+        }
     </style>
     <!-- 이 바이너리를 wasm으로 빌드. wasm-opt로 크기 축소(-Os). -->
     <link data-trunk rel="rust" data-bin="bevy-asteroids" data-wasm-opt="s"/>

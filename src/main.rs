@@ -18,10 +18,12 @@ fn main() {
                     primary_window: Some(Window {
                         title: "Bevy Asteroids".into(),
                         resolution: (1280, 720).into(),
-                        // 웹 빌드에서 지정한 셀렉터의 캔버스에 렌더링한다.
-                        // 네이티브에서는 이 값이 무시된다(no-op).
+                        // 웹 빌드에서 지정한 셀렉터의 캔버스에 렌더링한다(네이티브에선 no-op).
+                        // fit_canvas_to_parent는 켜지 않는다 — 그러면 렌더 해상도가 브라우저
+                        // 전체 크기로 맞춰져 UI(퍼센트 배치)가 창 전체에 퍼진다. 대신 항상
+                        // 1280x720 논리 해상도로 렌더하고, 표시 크기는 index.html의 CSS가
+                        // 16:9 유지한 채 창에 맞춰 스케일(레터박스)한다.
                         canvas: Some("#bevy-canvas".into()),
-                        fit_canvas_to_parent: true,
                         ..default()
                     }),
                     ..default()
