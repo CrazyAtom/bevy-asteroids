@@ -6,6 +6,7 @@ use bevy_persistent::prelude::*;
 
 use crate::core::state::{HighScore, Score};
 use crate::ui::menu::{MenuAction, MenuItem, MenuSelection};
+use crate::ui::scaling::spawn_stage;
 
 #[derive(Component)]
 pub(super) struct GameOverScreen;
@@ -16,18 +17,20 @@ pub(super) fn spawn_game_over(
     high: Res<Persistent<HighScore>>,
     selection: ResMut<MenuSelection>,
 ) {
-    commands.spawn((
-        GameOverScreen,
-        Text::new(format!("GAME OVER\nScore: {}\nHigh: {}", score.0, high.0)),
-        TextFont { font_size: FontSize::Px(40.0), ..default() },
-        TextColor(Color::WHITE),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(30.0),
-            left: Val::Percent(38.0),
-            ..default()
-        },
-    ));
+    let stage = spawn_stage(&mut commands, (GameOverScreen,));
+    commands.entity(stage).with_children(|s| {
+        s.spawn((
+            Text::new(format!("GAME OVER\nScore: {}\nHigh: {}", score.0, high.0)),
+            TextFont { font_size: FontSize::Px(40.0), ..default() },
+            TextColor(Color::WHITE),
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Percent(30.0),
+                left: Val::Percent(38.0),
+                ..default()
+            },
+        ));
+    });
     spawn_game_over_menu_only(commands, selection);
 }
 
@@ -37,21 +40,23 @@ pub(super) fn spawn_game_over_menu_only(mut commands: Commands, mut selection: R
         (MenuAction::Restart, "RESTART"),
         (MenuAction::QuitToTitle, "QUIT TO TITLE"),
     ];
-    for (i, (action, label)) in items.iter().enumerate() {
-        commands.spawn((
-            GameOverScreen,
-            MenuItem { index: i, action: *action, label },
-            Text::new(label.to_string()),
-            TextFont { font_size: FontSize::Px(32.0), ..default() },
-            TextColor(Color::srgb(0.55, 0.55, 0.55)),
-            Node {
-                position_type: PositionType::Absolute,
-                top: Val::Percent(58.0 + i as f32 * 8.0),
-                left: Val::Percent(42.0),
-                ..default()
-            },
-        ));
-    }
+    let stage = spawn_stage(&mut commands, (GameOverScreen,));
+    commands.entity(stage).with_children(|s| {
+        for (i, (action, label)) in items.iter().enumerate() {
+            s.spawn((
+                MenuItem { index: i, action: *action, label },
+                Text::new(label.to_string()),
+                TextFont { font_size: FontSize::Px(32.0), ..default() },
+                TextColor(Color::srgb(0.55, 0.55, 0.55)),
+                Node {
+                    position_type: PositionType::Absolute,
+                    top: Val::Percent(58.0 + i as f32 * 8.0),
+                    left: Val::Percent(42.0),
+                    ..default()
+                },
+            ));
+        }
+    });
     *selection = MenuSelection { index: 0, count: 2 };
 }
 

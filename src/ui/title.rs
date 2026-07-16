@@ -15,6 +15,7 @@ use crate::core::logic::{wrap_position, AsteroidSize};
 use crate::core::state::HighScore;
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 use crate::ui::menu::{MenuAction, MenuItem, MenuSelection};
+use crate::ui::scaling::spawn_stage;
 
 const TITLE_TEXT: &str = "ASTEROIDS";
 const INTRO_SECS: f32 = 1.4;
@@ -84,32 +85,35 @@ pub(super) fn spawn_title(
         Anchor::CENTER_LEFT,
         Transform::from_xyz(TITLE_LEFT_X, TITLE_Y, TITLE_Z),
     ));
-    // 최고점수(UI)
-    commands.spawn((
-        TitleUi,
-        Text::new(format!("HIGH SCORE: {}", high.0)),
-        TextFont { font_size: FontSize::Px(28.0), ..default() },
-        TextColor(Color::srgb(0.7, 0.7, 0.7)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(46.0),
-            left: Val::Percent(38.0),
-            ..default()
-        },
-    ));
-    // 버전(우측 하단)
-    commands.spawn((
-        TitleUi,
-        Text::new(concat!("v", env!("CARGO_PKG_VERSION"))),
-        TextFont { font_size: FontSize::Px(16.0), ..default() },
-        TextColor(Color::srgb(0.4, 0.4, 0.4)),
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Percent(3.0),
-            right: Val::Percent(3.0),
-            ..default()
-        },
-    ));
+    // 최고점수·버전은 UI 노드(월드 Text2d/스프라이트와 달리 카메라 스케일을 안 탐)라
+    // 1280×720 스테이지에 올려 다른 UI와 같은 비율로 스케일·정렬한다.
+    let stage = spawn_stage(&mut commands, (TitleUi,));
+    commands.entity(stage).with_children(|s| {
+        // 최고점수(UI)
+        s.spawn((
+            Text::new(format!("HIGH SCORE: {}", high.0)),
+            TextFont { font_size: FontSize::Px(28.0), ..default() },
+            TextColor(Color::srgb(0.7, 0.7, 0.7)),
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Percent(46.0),
+                left: Val::Percent(38.0),
+                ..default()
+            },
+        ));
+        // 버전(우측 하단)
+        s.spawn((
+            Text::new(concat!("v", env!("CARGO_PKG_VERSION"))),
+            TextFont { font_size: FontSize::Px(16.0), ..default() },
+            TextColor(Color::srgb(0.4, 0.4, 0.4)),
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Percent(3.0),
+                right: Val::Percent(3.0),
+                ..default()
+            },
+        ));
+    });
 
     // 배경을 떠다니는 소행성 5개(중앙 회피: 좌/우 절반에 편향 배치)
     let mut rng = rand::rng();
@@ -197,33 +201,34 @@ pub(super) fn advance_title_intro(
     }
 
     let items = [(MenuAction::StartGame, "START"), (MenuAction::QuitApp, "QUIT")];
-    for (i, (action, label)) in items.iter().enumerate() {
-        commands.spawn((
-            TitleUi,
-            MenuItem { index: i, action: *action, label },
-            Text::new(label.to_string()),
-            TextFont { font_size: FontSize::Px(28.0), ..default() },
-            TextColor(Color::srgb(0.55, 0.55, 0.55)),
+    let stage = spawn_stage(&mut commands, (TitleUi,));
+    commands.entity(stage).with_children(|s| {
+        for (i, (action, label)) in items.iter().enumerate() {
+            s.spawn((
+                MenuItem { index: i, action: *action, label },
+                Text::new(label.to_string()),
+                TextFont { font_size: FontSize::Px(28.0), ..default() },
+                TextColor(Color::srgb(0.55, 0.55, 0.55)),
+                Node {
+                    position_type: PositionType::Absolute,
+                    top: Val::Percent(56.0 + i as f32 * 8.0),
+                    left: Val::Percent(45.0),
+                    ..default()
+                },
+            ));
+        }
+        s.spawn((
+            Text::new("UP/DOWN SELECT   ENTER CONFIRM"),
+            TextFont { font_size: FontSize::Px(20.0), ..default() },
+            TextColor(Color::srgb(0.45, 0.45, 0.45)),
             Node {
                 position_type: PositionType::Absolute,
-                top: Val::Percent(56.0 + i as f32 * 8.0),
-                left: Val::Percent(45.0),
+                top: Val::Percent(82.0),
+                left: Val::Percent(36.0),
                 ..default()
             },
         ));
-    }
-    commands.spawn((
-        TitleUi,
-        Text::new("UP/DOWN SELECT   ENTER CONFIRM"),
-        TextFont { font_size: FontSize::Px(20.0), ..default() },
-        TextColor(Color::srgb(0.45, 0.45, 0.45)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(82.0),
-            left: Val::Percent(36.0),
-            ..default()
-        },
-    ));
+    });
     *selection = MenuSelection { index: 0, count: 2 };
 }
 
