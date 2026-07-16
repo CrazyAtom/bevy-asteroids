@@ -5,6 +5,7 @@ use bevy::text::FontSize;
 
 use crate::core::state::RunPhase;
 use crate::ui::menu::{MenuAction, MenuItem, MenuSelection};
+use crate::ui::scaling::spawn_stage;
 
 #[derive(Component)]
 pub(super) struct PauseUi;
@@ -42,42 +43,41 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
         },
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
     ));
-    // PAUSED
-    commands.spawn((
-        PauseUi,
-        GlobalZIndex(2),
-        Text::new("PAUSED"),
-        TextFont { font_size: FontSize::Px(56.0), ..default() },
-        TextColor(Color::WHITE),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(28.0),
-            left: Val::Percent(40.0),
-            ..default()
-        },
-    ));
-    // 메뉴 항목 3개
+    // PAUSED + 메뉴를 1280×720 스테이지 위에 올린다(위치 Percent는 그대로지만
+    // 이제 스테이지 기준이라 ui_scale로 텍스트·간격이 함께 스케일된다).
     let items = [
         (MenuAction::Resume, "RESUME"),
         (MenuAction::Restart, "RESTART"),
         (MenuAction::QuitToTitle, "QUIT TO TITLE"),
     ];
-    for (i, (action, label)) in items.iter().enumerate() {
-        commands.spawn((
-            PauseUi,
-            GlobalZIndex(2),
-            MenuItem { index: i, action: *action, label },
-            Text::new(label.to_string()),
-            TextFont { font_size: FontSize::Px(34.0), ..default() },
-            TextColor(Color::srgb(0.55, 0.55, 0.55)),
+    let stage = spawn_stage(&mut commands, (PauseUi, GlobalZIndex(2)));
+    commands.entity(stage).with_children(|s| {
+        s.spawn((
+            Text::new("PAUSED"),
+            TextFont { font_size: FontSize::Px(56.0), ..default() },
+            TextColor(Color::WHITE),
             Node {
                 position_type: PositionType::Absolute,
-                top: Val::Percent(46.0 + i as f32 * 8.0),
+                top: Val::Percent(28.0),
                 left: Val::Percent(40.0),
                 ..default()
             },
         ));
-    }
+        for (i, (action, label)) in items.iter().enumerate() {
+            s.spawn((
+                MenuItem { index: i, action: *action, label },
+                Text::new(label.to_string()),
+                TextFont { font_size: FontSize::Px(34.0), ..default() },
+                TextColor(Color::srgb(0.55, 0.55, 0.55)),
+                Node {
+                    position_type: PositionType::Absolute,
+                    top: Val::Percent(46.0 + i as f32 * 8.0),
+                    left: Val::Percent(40.0),
+                    ..default()
+                },
+            ));
+        }
+    });
     *selection = MenuSelection { index: 0, count: 3 };
 }
 

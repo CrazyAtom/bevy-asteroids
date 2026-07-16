@@ -7,6 +7,7 @@ mod game_over;
 mod hud;
 pub(crate) mod menu;
 mod pause;
+mod scaling;
 mod title;
 
 use bevy::prelude::*;
@@ -19,6 +20,9 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<banner::LastStage>()
             .init_resource::<menu::MenuSelection>()
+            // 창 크기에 맞춰 UI(Px)를 비례 스케일하고, 카메라를 16:9 레터박스로 맞춰
+            // 월드도 정확히 1280×720만 보이게 한다(둘이 같은 fit 배율이라 정렬됨).
+            .add_systems(Update, (scaling::sync_ui_scale, scaling::sync_letterbox))
             .add_systems(OnEnter(GameState::Title), title::spawn_title)
             .add_systems(OnExit(GameState::Title), title::despawn_title)
             .add_systems(

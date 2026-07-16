@@ -8,6 +8,9 @@
 # 빌드 시 SVG에서 생성되는 스프라이트 PNG
 /assets/sprites/*.png
 
+# trunk 빌드 산출물
+/dist
+
 # macOS
 .DS_Store
 

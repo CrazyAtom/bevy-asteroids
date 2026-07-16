@@ -1,0 +1,52 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  # 진행 중인 프로덕션 배포는 취소하지 않는다(GitHub 공식 Pages 템플릿 권장).
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # 빌드 잡은 체크아웃만 필요 — Pages/OIDC 권한은 deploy 잡에만 준다(방어적 최소권한).
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust 툴체인 + wasm 타깃
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: trunk 설치
+        uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+      - name: 에셋 선생성(build.rs로 PNG/WAV 생성 — copy-dir 경합 방지)
+        run: cargo build --release --target wasm32-unknown-unknown
+      - name: 빌드(trunk가 dist 생성 — 위에서 생성된 에셋을 copy-dir로 복사)
+        run: trunk build --release --public-url /bevy-asteroids/
+      - name: Pages 아티팩트 업로드
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Pages 배포
+        id: deployment
+        uses: actions/deploy-pages@v4

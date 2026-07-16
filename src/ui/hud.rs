@@ -10,6 +10,7 @@ use crate::entities::player::{Player, RapidFire, Shield, Spread};
 use crate::entities::special_weapon::{weapon_icon, SpecialWeapon};
 use crate::fx::sprites::SpriteAssets;
 use crate::systems::stage::Progression;
+use crate::ui::scaling::spawn_stage;
 
 #[derive(Component)]
 pub(super) struct Hud;
@@ -41,19 +42,19 @@ pub(super) fn spawn_hud(mut commands: Commands, assets: Res<SpriteAssets>) {
         column_gap: Val::Px(3.0),
         ..default()
     };
-    commands
-        .spawn((
-            GameplayEntity,
-            Node {
-                position_type: PositionType::Absolute,
-                top: Val::Px(12.0),
-                left: Val::Px(12.0),
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                column_gap: Val::Px(14.0),
-                ..default()
-            },
-        ))
+    // HUD를 1280×720 스테이지 위에 올려, 창 크기와 무관하게 다른 UI와 같은
+    // 비율로 스케일하고 16:9 안전영역 안(좌상단)에 고정한다.
+    let stage = spawn_stage(&mut commands, (GameplayEntity,));
+    commands.entity(stage).with_children(|s| {
+        s.spawn(Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(12.0),
+            left: Val::Px(12.0),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            column_gap: Val::Px(14.0),
+            ..default()
+        })
         .with_children(|root| {
             // Score / High / Stage 텍스트
             root.spawn((
@@ -97,6 +98,7 @@ pub(super) fn spawn_hud(mut commands: Commands, assets: Res<SpriteAssets>) {
                 }
             });
         });
+    });
 }
 
 pub(super) fn update_hud(

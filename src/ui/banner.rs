@@ -6,6 +6,7 @@ use bevy::text::FontSize;
 use crate::core::state::GameplayEntity;
 use crate::entities::boss::Boss;
 use crate::systems::stage::{theme_name, Progression};
+use crate::ui::scaling::spawn_stage;
 
 /// 웨이브가 오를 때 화면 중앙에 잠깐 떴다 사라지는 "WAVE N" 배너.
 #[derive(Component)]
@@ -37,24 +38,28 @@ pub(super) fn announce_stage(
     for entity in &existing {
         commands.entity(entity).despawn();
     }
-    commands.spawn((
-        WaveBanner { life: Timer::from_seconds(1.8, TimerMode::Once) },
-        GameplayEntity,
-        Text::new(format!(
-            "STAGE {}-{}  {}",
-            prog.cycle + 1,
-            prog.stage_in_cycle + 1,
-            theme_name(prog.current_theme())
-        )),
-        TextFont { font_size: FontSize::Px(44.0), ..default() },
-        TextColor(Color::srgb(0.4, 0.9, 1.0)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(30.0),
-            left: Val::Percent(32.0),
-            ..default()
-        },
-    ));
+    let stage = spawn_stage(
+        &mut commands,
+        (WaveBanner { life: Timer::from_seconds(1.8, TimerMode::Once) }, GameplayEntity),
+    );
+    commands.entity(stage).with_children(|s| {
+        s.spawn((
+            Text::new(format!(
+                "STAGE {}-{}  {}",
+                prog.cycle + 1,
+                prog.stage_in_cycle + 1,
+                theme_name(prog.current_theme())
+            )),
+            TextFont { font_size: FontSize::Px(44.0), ..default() },
+            TextColor(Color::srgb(0.4, 0.9, 1.0)),
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Percent(30.0),
+                left: Val::Percent(32.0),
+                ..default()
+            },
+        ));
+    });
 }
 
 /// 수명이 다한 웨이브 배너를 제거한다.
@@ -83,19 +88,23 @@ pub(super) fn announce_boss(
     for entity in &existing {
         commands.entity(entity).despawn();
     }
-    commands.spawn((
-        WaveBanner { life: Timer::from_seconds(1.5, TimerMode::Once) },
-        GameplayEntity,
-        Text::new("! BOSS !"),
-        TextFont { font_size: FontSize::Px(52.0), ..default() },
-        TextColor(Color::srgb(1.0, 0.35, 0.35)),
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Percent(28.0),
-            left: Val::Percent(40.0),
-            ..default()
-        },
-    ));
+    let stage = spawn_stage(
+        &mut commands,
+        (WaveBanner { life: Timer::from_seconds(1.5, TimerMode::Once) }, GameplayEntity),
+    );
+    commands.entity(stage).with_children(|s| {
+        s.spawn((
+            Text::new("! BOSS !"),
+            TextFont { font_size: FontSize::Px(52.0), ..default() },
+            TextColor(Color::srgb(1.0, 0.35, 0.35)),
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Percent(28.0),
+                left: Val::Percent(40.0),
+                ..default()
+            },
+        ));
+    });
 }
 
 #[cfg(test)]
