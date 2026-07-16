@@ -31,7 +31,9 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: trunk
-      - name: 빌드(에셋은 build.rs가 재생성)
+      - name: 에셋 선생성(build.rs로 PNG/WAV 생성 — copy-dir 경합 방지)
+        run: cargo build --release --target wasm32-unknown-unknown
+      - name: 빌드(trunk가 dist 생성 — 위에서 생성된 에셋을 copy-dir로 복사)
         run: trunk build --release --public-url /bevy-asteroids/
       - name: Pages 아티팩트 업로드
         uses: actions/upload-pages-artifact@v3
