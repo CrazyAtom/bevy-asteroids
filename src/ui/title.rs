@@ -61,7 +61,13 @@ pub(super) fn spawn_title(
     high: Res<Persistent<HighScore>>,
     assets: Res<SpriteAssets>,
     mut selection: ResMut<MenuSelection>,
+    mut keys: ResMut<ButtonInput<KeyCode>>,
 ) {
+    // Pause/GameOver에서 Enter로 QuitToTitle 하면 그 Enter의 just_pressed가 첫 Title
+    // 프레임까지 남아 인트로가 즉시 스킵될 수 있다. 진입 시 입력 엣지를 비워, 재진입에도
+    // 어트랙트 모드 인트로가 항상 재생되게 한다(이후 프레임의 실제 스킵 입력은 정상 처리).
+    keys.clear();
+
     commands.insert_resource(TitleAnim {
         timer: Timer::from_seconds(INTRO_SECS, TimerMode::Once),
         ready: false,
