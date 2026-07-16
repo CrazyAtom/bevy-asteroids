@@ -48,6 +48,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
     let items = [
         (MenuAction::Resume, "RESUME"),
         (MenuAction::Restart, "RESTART"),
+        (MenuAction::ShowHelp, "HELP"),
         (MenuAction::QuitToTitle, "QUIT TO TITLE"),
     ];
     let stage = spawn_stage(&mut commands, (PauseUi, GlobalZIndex(2)));
@@ -78,7 +79,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
             ));
         }
     });
-    *selection = MenuSelection { index: 0, count: 3 };
+    *selection = MenuSelection { index: 0, count: 4 };
 }
 
 pub(super) fn despawn_pause_menu(mut commands: Commands, query: Query<Entity, With<PauseUi>>) {

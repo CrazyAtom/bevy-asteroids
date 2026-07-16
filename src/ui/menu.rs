@@ -6,6 +6,7 @@ use bevy::app::AppExit;
 use bevy::prelude::*;
 
 use crate::core::state::{GameState, RunPhase};
+use crate::ui::help::HelpOpen;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MenuAction {
@@ -13,7 +14,10 @@ pub enum MenuAction {
     Resume,
     Restart,
     QuitToTitle,
+    // 웹(WASM)에선 타이틀에서 QUIT를 빼므로 이 변형이 생성되지 않는다(의도된 미사용).
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     QuitApp,
+    ShowHelp,
 }
 
 /// 메뉴 한 항목(Text 엔티티에 부착). 화면 마커와 함께 스폰된다.
@@ -61,6 +65,7 @@ pub fn menu_activate(
     mut next_game: ResMut<NextState<GameState>>,
     mut next_phase: ResMut<NextState<RunPhase>>,
     mut exit: MessageWriter<AppExit>,
+    mut help: ResMut<HelpOpen>,
 ) {
     if !keys.just_pressed(KeyCode::Enter) {
         return;
@@ -80,6 +85,9 @@ pub fn menu_activate(
         MenuAction::QuitApp => {
             exit.write(AppExit::Success);
         }
+        // 하부 상태(Title/Paused)는 그대로 두고 HELP 오버레이만 켠다. close_help가
+        // 다음 프레임부터 아무 키로 닫으며, 그동안 이 메뉴 시스템은 run_if로 억제된다.
+        MenuAction::ShowHelp => help.0 = true,
     }
 }
 

@@ -14,6 +14,7 @@ use crate::core::config::{HALF_HEIGHT, HALF_WIDTH};
 use crate::core::logic::{wrap_position, AsteroidSize};
 use crate::core::state::HighScore;
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
+use crate::ui::help::HelpOpen;
 use crate::ui::menu::{MenuAction, MenuItem, MenuSelection};
 use crate::ui::scaling::spawn_stage;
 
@@ -200,7 +201,17 @@ pub(super) fn advance_title_intro(
         transform.translation.y = TITLE_Y;
     }
 
-    let items = [(MenuAction::StartGame, "START"), (MenuAction::QuitApp, "QUIT")];
+    // 웹(WASM)에선 브라우저 탭을 스크립트로 닫을 수 없어 "QUIT"(AppExit)이 화면만
+    // 얼리므로 제외한다. 네이티브는 정상 종료되므로 유지. HELP는 양쪽 공통.
+    #[cfg(not(target_arch = "wasm32"))]
+    let items: &[(MenuAction, &str)] = &[
+        (MenuAction::StartGame, "START"),
+        (MenuAction::ShowHelp, "HELP"),
+        (MenuAction::QuitApp, "QUIT"),
+    ];
+    #[cfg(target_arch = "wasm32")]
+    let items: &[(MenuAction, &str)] =
+        &[(MenuAction::StartGame, "START"), (MenuAction::ShowHelp, "HELP")];
     let stage = spawn_stage(&mut commands, (TitleUi,));
     commands.entity(stage).with_children(|s| {
         for (i, (action, label)) in items.iter().enumerate() {
@@ -229,7 +240,7 @@ pub(super) fn advance_title_intro(
             },
         ));
     });
-    *selection = MenuSelection { index: 0, count: 2 };
+    *selection = MenuSelection { index: 0, count: items.len() };
 }
 
 /// Ready 상태에서 타이틀 문구를 HDR 값으로 은은히 맥동시켜 Bloom과 함께 발광하게 한다.
@@ -338,6 +349,23 @@ pub(super) fn fade_title_trail(
     }
 }
 
+/// HELP가 열려 있는 동안 타이틀 요소를 숨겨 헬프 텍스트만 보이게 한다.
+/// 부유 소행성(`TitleDebris`)만 남기고 나머지 `TitleUi`(발광 문구·함선·추진 잔상 +
+/// HIGH SCORE·메뉴·버전·힌트 UI)를 모두 숨긴다. UI 텍스트는 스테이지 컨테이너
+/// (`TitleUi`)를 숨기면 자식이 상속으로 함께 사라진다. 우주 배경은 `TitleUi`가
+/// 아니라 그대로 보인다. 닫으면 기본값 Inherited로 되돌린다.
+pub(super) fn hide_title_while_help(
+    help: Res<HelpOpen>,
+    mut q: Query<&mut Visibility, (With<TitleUi>, Without<TitleDebris>)>,
+) {
+    let want = if help.0 { Visibility::Hidden } else { Visibility::Inherited };
+    for mut vis in &mut q {
+        if *vis != want {
+            *vis = want;
+        }
+    }
+}
+
 pub(super) fn despawn_title(mut commands: Commands, query: Query<Entity, With<TitleUi>>) {
     for entity in &query {
         commands.entity(entity).despawn();
@@ -409,7 +437,7 @@ mod tests {
     }
 
     #[test]
-    fn intro_skip_spawns_two_menu_items_with_expected_actions() {
+    fn intro_skip_spawns_menu_items_with_expected_actions() {
         let mut app = build_test_app();
         let dir = insert_high_score(&mut app, "bevy-asteroids-intro-skip-test");
 
@@ -427,11 +455,19 @@ mod tests {
             .collect();
         items.sort_by_key(|(index, _)| *index);
 
-        assert_eq!(items, vec![(0, MenuAction::StartGame), (1, MenuAction::QuitApp)]);
+        // 네이티브 테스트 타깃: START / HELP / QUIT 3항목(웹에선 QUIT 제외).
+        assert_eq!(
+            items,
+            vec![
+                (0, MenuAction::StartGame),
+                (1, MenuAction::ShowHelp),
+                (2, MenuAction::QuitApp)
+            ]
+        );
 
         let selection = app.world().resource::<MenuSelection>();
         assert_eq!(selection.index, 0);
-        assert_eq!(selection.count, 2);
+        assert_eq!(selection.count, 3);
 
         let anim = app.world().resource::<TitleAnim>();
         assert!(anim.ready);
