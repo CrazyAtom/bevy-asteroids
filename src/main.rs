@@ -4,7 +4,7 @@ mod fx;
 mod systems;
 mod ui;
 
-use bevy::camera::Hdr;
+use bevy::camera::{Hdr, OrthographicProjection, Projection, ScalingMode};
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
@@ -19,10 +19,12 @@ fn main() {
                         title: "Bevy Asteroids".into(),
                         resolution: (1280, 720).into(),
                         // 웹 빌드에서 지정한 셀렉터의 캔버스에 렌더링한다(네이티브에선 no-op).
-                        // fit_canvas_to_parent는 켜지 않는다 — 그러면 렌더 해상도가 브라우저
-                        // 전체 크기로 맞춰져 UI(퍼센트 배치)가 창 전체에 퍼진다. 대신 항상
-                        // 1280x720 논리 해상도로 렌더하고, 표시 크기는 index.html의 CSS가
-                        // 16:9 유지한 채 창에 맞춰 스케일(레터박스)한다.
+                        // fit_canvas_to_parent는 켜지 않는다 — 켜면 Bevy가 canvas에 인라인
+                        // width/height:100%를 박아 아래 CSS를 덮어쓰고 UI(퍼센트 배치)가 창
+                        // 전체로 퍼진다. 대신 index.html CSS가 캔버스를 16:9로 고정한다.
+                        // (주의: 웹에선 winit ResizeObserver가 논리 해상도를 캔버스 크기에
+                        // 계속 맞추므로 해상도는 1280x720 고정이 아니라 '항상 16:9'로 유동한다.
+                        // 퍼센트 기반 UI는 어느 16:9 크기에서도 비율이 맞다.)
                         canvas: Some("#bevy-canvas".into()),
                         ..default()
                     }),
@@ -99,6 +101,13 @@ fn setup_camera(mut commands: Commands) {
     // Tonemapping::None으로 나머지(LDR) 스프라이트 색은 그대로 유지해 게임 전체 룩은 불변.
     commands.spawn((
         Camera2d,
+        // 웹에선 창 크기에 따라 논리 해상도가 유동한다. 고정 스케일링으로 게임 월드
+        // (±640×±360 = 1280x720)가 어느 16:9 창에서도 화면을 꽉 채우게 한다(더 큰 창에서
+        // 소행성이 화면 밖에서 순환하지 않도록). 네이티브(1280x720)에선 사실상 no-op.
+        Projection::Orthographic(OrthographicProjection {
+            scaling_mode: ScalingMode::AutoMin { min_width: 1280.0, min_height: 720.0 },
+            ..OrthographicProjection::default_2d()
+        }),
         Hdr, // HDR 중간 렌더 텍스처 활성(0.19: Camera.hdr 필드 대신 마커 컴포넌트)
         Tonemapping::None,
         Bloom { intensity: 0.3, ..default() },
