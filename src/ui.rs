@@ -22,6 +22,24 @@ impl Plugin for UiPlugin {
             .add_systems(OnEnter(GameState::Title), title::spawn_title)
             .add_systems(OnExit(GameState::Title), title::despawn_title)
             .add_systems(
+                Update,
+                (
+                    title::advance_title_intro,
+                    title::drift_title_debris,
+                    title::glow_title,
+                    title::rotate_title_ship,
+                    title::emit_title_trail,
+                    title::fade_title_trail,
+                )
+                    .run_if(in_state(GameState::Title)),
+            )
+            .add_systems(
+                Update,
+                title::pulse_title_selection
+                    .after(menu::highlight_menu)
+                    .run_if(in_state(GameState::Title)),
+            )
+            .add_systems(
                 OnEnter(GameState::Playing),
                 (hud::spawn_hud, boss_bar::spawn_boss_bar, banner::reset_last_stage),
             )
