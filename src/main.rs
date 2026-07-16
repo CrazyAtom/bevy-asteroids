@@ -18,6 +18,10 @@ fn main() {
                     primary_window: Some(Window {
                         title: "Bevy Asteroids".into(),
                         resolution: (1280, 720).into(),
+                        // 웹 빌드에서 지정한 셀렉터의 캔버스에 렌더링한다.
+                        // 네이티브에서는 이 값이 무시된다(no-op).
+                        canvas: Some("#bevy-canvas".into()),
+                        fit_canvas_to_parent: true,
                         ..default()
                     }),
                     ..default()
@@ -27,7 +31,7 @@ fn main() {
                 // 컴파일 타임 프로젝트 경로를 박아, 실행 방식과 무관하게 항상
                 // <project>/assets 에서 에셋(사운드 WAV)을 찾게 한다.
                 .set(AssetPlugin {
-                    file_path: concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_string(),
+                    file_path: asset_path(),
                     ..default()
                 }),
         )
@@ -61,6 +65,18 @@ fn main() {
         .run();
 }
 
+/// 에셋 루트 경로. 네이티브는 절대경로(IDE 실행 대응), wasm은 상대경로(HTTP 로딩).
+fn asset_path() -> String {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_string()
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        "assets".to_string()
+    }
+}
+
 fn setup_camera(mut commands: Commands) {
     // HDR + Bloom으로 색값 1.0 초과 스프라이트(공격형 실드 우주선 등)를 실제 발광시킨다.
     // Tonemapping::None으로 나머지(LDR) 스프라이트 색은 그대로 유지해 게임 전체 룩은 불변.
@@ -73,13 +89,21 @@ fn setup_camera(mut commands: Commands) {
 }
 
 fn load_high_score() -> Persistent<core::state::HighScore> {
-    let dir = dirs::config_dir()
+    // 네이티브는 OS 설정 디렉터리의 JSON 파일에, wasm은 브라우저 localStorage
+    // 키에 저장한다(dirs::config_dir()가 wasm에서 항상 None을 반환해 그대로 쓰면
+    // bevy-persistent 초기화가 패닉한다).
+    #[cfg(not(target_arch = "wasm32"))]
+    let path = dirs::config_dir()
         .map(|d| d.join("bevy-asteroids"))
-        .unwrap_or_else(|| std::path::PathBuf::from("."));
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("highscore.json");
+    #[cfg(target_arch = "wasm32")]
+    let path = std::path::PathBuf::from("local/bevy-asteroids-highscore");
+
     Persistent::<core::state::HighScore>::builder()
         .name("high score")
         .format(StorageFormat::Json)
-        .path(dir.join("highscore.json"))
+        .path(path)
         .default(core::state::HighScore(0))
         .revertible(true)
         .revert_to_default_on_deserialization_errors(true)
