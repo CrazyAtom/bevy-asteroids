@@ -61,6 +61,7 @@ fn main() {
         .add_plugins(fx::fog::FogPlugin)
         .add_plugins(fx::shake::ShakePlugin)
         .add_plugins(fx::audio::AudioPlugin)
+        .add_plugins(fx::music::MusicPlugin)
         .add_plugins(entities::ufo::UfoPlugin)
         .add_plugins(entities::powerup::PowerupPlugin)
         .add_plugins(ui::UiPlugin)
