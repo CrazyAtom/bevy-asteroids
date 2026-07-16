@@ -12,11 +12,15 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # 진행 중인 프로덕션 배포는 취소하지 않는다(GitHub 공식 Pages 템플릿 권장).
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 빌드 잡은 체크아웃만 필요 — Pages/OIDC 권한은 deploy 잡에만 준다(방어적 최소권한).
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Rust 툴체인 + wasm 타깃
