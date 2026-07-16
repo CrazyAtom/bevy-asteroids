@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use crate::core::config::{FOG_BASE_SIZE, Z_FOG};
 use crate::core::logic::storm_vision_scale;
+use crate::core::state::RunPhase;
 use crate::entities::player::Player;
 use crate::fx::sprites::SpriteAssets;
 
@@ -24,7 +25,7 @@ impl Plugin for FogPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FogState>()
             .add_systems(Startup, spawn_fog)
-            .add_systems(Update, update_fog);
+            .add_systems(Update, update_fog.run_if(not(in_state(RunPhase::Paused))));
     }
 }
 

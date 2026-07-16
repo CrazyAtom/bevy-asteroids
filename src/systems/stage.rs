@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::core::config::{CYCLE_LEN, SHIP_DAMPING_ICE, STARTING_LIVES, WAVES_PER_STAGE};
 use crate::core::logic::{asteroid_count_for_wave, asteroid_speed_scale_for_wave, AsteroidSize};
-use crate::core::state::{GameState, Lives};
+use crate::core::state::{GameState, Lives, RunPhase};
 use crate::entities::asteroid::{random_spawn_position, random_velocity, spawn_asteroid, Asteroid};
 use crate::entities::black_hole::BlackHoleActive;
 use crate::fx::fog::FogState;
@@ -176,7 +176,7 @@ impl Plugin for StagePlugin {
         )
         .add_systems(
             Update,
-            (stage_control, sync_stage_modifiers).run_if(in_state(GameState::Playing)),
+            (stage_control, sync_stage_modifiers).run_if(in_state(RunPhase::Running)),
         )
         .add_systems(Update, (sync_fog_state, sync_black_hole));
     }

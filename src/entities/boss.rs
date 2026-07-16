@@ -18,7 +18,7 @@ use crate::core::config::{
     UFO_BULLET_SPEED, Z_ENTITY,
 };
 use crate::core::logic::{aim_direction, circles_overlap, segment_circle_hit, AsteroidSize};
-use crate::core::state::{GameState, GameplayEntity, Lives, Score};
+use crate::core::state::{GameplayEntity, Lives, RunPhase, Score};
 use crate::entities::asteroid::{random_velocity, spawn_asteroid};
 use crate::entities::bullet::{spawn_enemy_bullet, Bullet};
 use crate::entities::player::Player;
@@ -166,7 +166,7 @@ impl Plugin for BossPlugin {
                 singularity::singularity_gravity_pulse,
                 singularity::singularity_lunge,
             )
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(RunPhase::Running)),
         );
     }
 }

@@ -13,7 +13,7 @@ use std::collections::VecDeque;
 use bevy::prelude::*;
 
 use crate::core::config::SHAKE_SPECIAL;
-use crate::core::state::GameState;
+use crate::core::state::RunPhase;
 use crate::entities::player::Player;
 use crate::fx::audio::{Sfx, SfxEvent};
 use crate::fx::shake::ShakeEvent;
@@ -74,7 +74,7 @@ impl Plugin for SpecialWeaponPlugin {
                 shield_burst::burst_tick,
                 shield_burst::burst_contact_destroy,
             )
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(RunPhase::Running)),
         );
     }
 }

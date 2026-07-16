@@ -33,6 +33,11 @@ fn main() {
         )
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(Time::<Fixed>::from_hz(60.0))
+        // 최고점수는 App 빌드 시점에 동기 삽입한다. Bevy 0.19에서 초기 상태 전이
+        // (OnEnter(Title)→spawn_title, Persistent<HighScore> 참조)는 Startup보다 먼저
+        // 도는 StateTransition 패스에서 실행되므로, Startup 시스템에서 지연 삽입하면
+        // 부팅 첫 프레임에 "Resource does not exist" 패닉이 난다.
+        .insert_resource(load_high_score())
         .add_plugins(systems::movement::MovementPlugin)
         .add_plugins(core::state::GameStatePlugin)
         .add_plugins(entities::player::PlayerPlugin)
@@ -52,7 +57,7 @@ fn main() {
         .add_plugins(ui::UiPlugin)
         .add_plugins(fx::sprites::SpritesPlugin)
         .add_plugins(fx::animation::AnimationPlugin)
-        .add_systems(Startup, (setup_camera, setup_high_score))
+        .add_systems(Startup, setup_camera)
         .run();
 }
 
@@ -67,19 +72,17 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-fn setup_high_score(mut commands: Commands) {
+fn load_high_score() -> Persistent<core::state::HighScore> {
     let dir = dirs::config_dir()
         .map(|d| d.join("bevy-asteroids"))
         .unwrap_or_else(|| std::path::PathBuf::from("."));
-    commands.insert_resource(
-        Persistent::<core::state::HighScore>::builder()
-            .name("high score")
-            .format(StorageFormat::Json)
-            .path(dir.join("highscore.json"))
-            .default(core::state::HighScore(0))
-            .revertible(true)
-            .revert_to_default_on_deserialization_errors(true)
-            .build()
-            .expect("최고점수 리소스 초기화 실패"),
-    );
+    Persistent::<core::state::HighScore>::builder()
+        .name("high score")
+        .format(StorageFormat::Json)
+        .path(dir.join("highscore.json"))
+        .default(core::state::HighScore(0))
+        .revertible(true)
+        .revert_to_default_on_deserialization_errors(true)
+        .build()
+        .expect("최고점수 리소스 초기화 실패")
 }

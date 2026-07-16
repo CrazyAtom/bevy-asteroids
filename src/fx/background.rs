@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::core::config::{WINDOW_HEIGHT, WINDOW_WIDTH, Z_BACKGROUND};
-use crate::core::state::GameState;
+use crate::core::state::RunPhase;
 use crate::fx::sprites::SpriteAssets;
 use crate::systems::stage::{Progression, ThemeId};
 
@@ -13,7 +13,7 @@ pub struct BackgroundPlugin;
 impl Plugin for BackgroundPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_background)
-            .add_systems(Update, update_theme_background.run_if(in_state(GameState::Playing)));
+            .add_systems(Update, update_theme_background.run_if(in_state(RunPhase::Running)));
     }
 }
 

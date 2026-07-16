@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::core::components::{AngularVelocity, EdgeReflect, Velocity, Wrapping};
 use crate::core::config::{HALF_HEIGHT, HALF_WIDTH, SHIP_DAMPING};
 use crate::core::logic::{reflect_edge, wrap_position};
+use crate::core::state::RunPhase;
 
 /// 현재 스테이지의 물리 트위스트. 배경처럼 매 프레임 현재 테마로 동기화된다.
 #[derive(Resource)]
@@ -23,7 +24,8 @@ impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StageModifiers>().add_systems(
             FixedUpdate,
-            ((apply_velocity, wrap_around, reflect_or_wrap).chain(), apply_spin),
+            ((apply_velocity, wrap_around, reflect_or_wrap).chain(), apply_spin)
+                .run_if(in_state(RunPhase::Running)),
         );
     }
 }
@@ -76,6 +78,7 @@ fn reflect_or_wrap(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::state::GameState;
     use bevy::ecs::system::RunSystemOnce;
     use std::time::Duration;
 
@@ -138,6 +141,49 @@ mod tests {
         app.world_mut().run_system_once(reflect_or_wrap).unwrap();
         let t = app.world().entity(e).get::<Transform>().unwrap();
         assert!(t.translation.x < 0.0); // 순환(반대편)
+    }
+
+    /// 일시정지 중에는 실제 물리 적분(apply_velocity)이 멈춰야 한다(스펙 §4).
+    /// FixedUpdate 스케줄 타이밍에 흔들리지 않도록 동일한 게이팅을 Update에 등록해 검증한다.
+    #[test]
+    fn real_movement_freezes_when_paused() {
+        let mut app = App::new();
+        app.add_plugins(bevy::state::app::StatesPlugin);
+        app.init_state::<GameState>();
+        app.add_sub_state::<RunPhase>();
+        // MovementPlugin과 동일한 게이팅으로 실제 apply_velocity를 등록(FixedUpdate 타이밍 배제 위해 Update 사용)
+        app.add_systems(Update, apply_velocity.run_if(in_state(RunPhase::Running)));
+
+        let e = app
+            .world_mut()
+            .spawn((Transform::default(), Velocity(Vec2::new(100.0, 0.0))))
+            .id();
+
+        // Playing/Running 진입 → 시간 진행 → 엔티티가 이동해야 한다
+        app.world_mut().resource_mut::<NextState<GameState>>().set(GameState::Playing);
+        let mut time = Time::<()>::default();
+        time.advance_by(Duration::from_secs_f32(0.1));
+        app.insert_resource(time);
+        app.update();
+        let x_after_running = app.world().entity(e).get::<Transform>().unwrap().translation.x;
+        assert!(
+            x_after_running > 0.0,
+            "Running 중에는 실제 물리 적분이 동작해 엔티티가 이동해야 한다 (got {x_after_running})"
+        );
+
+        // 일시정지 → 시간이 흘러도 위치가 멈춰야 한다
+        app.world_mut().resource_mut::<NextState<RunPhase>>().set(RunPhase::Paused);
+        app.update();
+        let frozen = app.world().entity(e).get::<Transform>().unwrap().translation.x;
+        let mut time = Time::<()>::default();
+        time.advance_by(Duration::from_secs_f32(0.1));
+        app.insert_resource(time);
+        app.update();
+        let x_after_paused = app.world().entity(e).get::<Transform>().unwrap().translation.x;
+        assert_eq!(
+            x_after_paused, frozen,
+            "일시정지 중에는 실제 물리 적분이 멈춰 엔티티 위치가 변하지 않아야 한다"
+        );
     }
 
     #[test]

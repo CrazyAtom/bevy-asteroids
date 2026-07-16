@@ -6,7 +6,7 @@ use crate::core::config::{
     POWERUP_DRIFT_SPEED, POWERUP_LIFETIME_SECS, POWERUP_MAGNET_RANGE, POWERUP_MAGNET_SPEED,
     POWERUP_RADIUS, RAPID_FIRE_SECS, SHIELD_SECS, SPREAD_MAX_LEVEL, SPREAD_SECS, Z_ENTITY,
 };
-use crate::core::state::{GameState, GameplayEntity, Lives};
+use crate::core::state::{GameplayEntity, Lives, RunPhase};
 use crate::entities::player::{Player, RapidFire, Shield, Spread};
 use crate::entities::special_weapon::{pick_weapon_kind, weapon_icon, SpecialWeapon, SpecialWeaponKind};
 use crate::fx::audio::{Sfx, SfxEvent};
@@ -34,7 +34,7 @@ impl Plugin for PowerupPlugin {
         app.add_systems(
             Update,
             (powerup_lifetime, attract_powerups, collect_powerup)
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(RunPhase::Running)),
         );
     }
 }
