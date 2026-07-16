@@ -32,6 +32,7 @@ fn main() {
                 // <project>/assets 에서 에셋(사운드 WAV)을 찾게 한다.
                 .set(AssetPlugin {
                     file_path: asset_path(),
+                    meta_check: asset_meta_check(),
                     ..default()
                 }),
         )
@@ -74,6 +75,20 @@ fn asset_path() -> String {
     #[cfg(target_arch = "wasm32")]
     {
         "assets".to_string()
+    }
+}
+
+/// 에셋 메타(.meta) 검사 정책. wasm은 .meta 파일이 없어 매 에셋마다 HTTP 404가 나
+/// 콘솔이 지저분해지므로 검사를 끈다(게임은 기본 메타로 정상 로딩). 네이티브는
+/// 파일시스템 read_meta가 조용히 NotFound 처리하므로 기본값(Always) 유지.
+fn asset_meta_check() -> bevy::asset::AssetMetaCheck {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        bevy::asset::AssetMetaCheck::default()
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        bevy::asset::AssetMetaCheck::Never
     }
 }
 
