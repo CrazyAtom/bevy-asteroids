@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Bevy Asteroids</title>
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+    </style>
+    <!-- 이 바이너리를 wasm으로 빌드. wasm-opt로 크기 축소(-Os). -->
+    <link data-trunk rel="rust" data-bin="bevy-asteroids" data-wasm-opt="s"/>
+    <!-- 빌드 시 생성된 assets/ 를 dist/로 복사(HTTP 로딩 대상). -->
+    <link data-trunk rel="copy-dir" href="assets"/>
+</head>
+<body>
+    <canvas id="bevy-canvas"></canvas>
+</body>
+</html>
