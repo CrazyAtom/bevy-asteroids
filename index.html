@@ -17,6 +17,40 @@
             max-height: 100vh;
         }
     </style>
+    <!-- 브라우저 자동재생 정책: AudioContext는 사용자 제스처 전까지 suspended라
+         무음이 된다. Bevy(wasm) 오디오 백엔드가 만드는 컨텍스트를 추적했다가
+         첫 입력(클릭·키·터치)에 resume한다. wasm이 컨텍스트를 만들기 전에
+         설치돼야 하므로 trunk 로더보다 위(파싱 시점 동기 실행)에 둔다. -->
+    <script>
+        (function () {
+            var Original = window.AudioContext || window.webkitAudioContext;
+            if (!Original) return;
+            var contexts = [];
+            function Tracked() {
+                var ctx = new Original(...arguments);
+                contexts.push(ctx);
+                return ctx;
+            }
+            Tracked.prototype = Original.prototype;
+            window.AudioContext = Tracked;
+            window.webkitAudioContext = Tracked;
+            function resumeAll() {
+                for (var i = 0; i < contexts.length; i++) {
+                    // resume()은 Promise 반환 — 컨텍스트가 그새 닫히는 등의 거부를
+                    // 삼켜 unhandled rejection 경고를 막는다.
+                    if (contexts[i].state === 'suspended') contexts[i].resume().catch(function () {});
+                }
+            }
+            // capture 단계로 등록: winit이 캔버스 이벤트에 stopPropagation()을 걸어도
+            // 캡처는 타깃 도달 전에 먼저 실행되므로 window 리스너가 항상 발동한다
+            // (게임 첫 입력은 거의 항상 캔버스 위에서 일어난다). passive: 기본 동작을
+            // 막지 않으므로 안전하고 touchstart non-passive 경고도 없앤다.
+            var opts = { capture: true, passive: true };
+            ['pointerdown', 'keydown', 'touchstart', 'mousedown'].forEach(function (evt) {
+                window.addEventListener(evt, resumeAll, opts);
+            });
+        })();
+    </script>
     <!-- 이 바이너리를 wasm으로 빌드. wasm-opt로 크기 축소(-Os). -->
     <link data-trunk rel="rust" data-bin="bevy-asteroids" data-wasm-opt="s"/>
     <!-- 빌드 시 생성된 assets/ 를 dist/로 복사(HTTP 로딩 대상). -->
