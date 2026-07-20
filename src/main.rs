@@ -30,10 +30,10 @@ fn main() {
                     }),
                     ..default()
                 })
-                // IDE(F5)나 바이너리 직접 실행 시 CARGO_MANIFEST_DIR가 없어 Bevy가
-                // 실행 파일 옆(target/debug/assets)에서 에셋을 찾는 문제를 방지한다.
-                // 컴파일 타임 프로젝트 경로를 박아, 실행 방식과 무관하게 항상
-                // <project>/assets 에서 에셋(사운드 WAV)을 찾게 한다.
+                // 에셋 루트는 asset_path()가 런타임에 해결한다. 배포본은 실행 파일
+                // 위치 기준(.app의 ../Resources/assets → 실행 파일 옆 assets)으로 먼저
+                // 찾고, 없으면 개발용 소스 트리(CARGO_MANIFEST_DIR/assets)로 폴백한다.
+                // wasm은 상대경로("assets")로 HTTP 로딩한다.
                 .set(AssetPlugin {
                     file_path: asset_path(),
                     meta_check: asset_meta_check(),
