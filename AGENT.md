@@ -13,14 +13,14 @@ Rust + [Bevy](https://bevyengine.org) `0.19` 로 만든 2D 애스테로이드 �
 
 ## 아키텍처
 
-```
+```text
 src/
 ├── main.rs      # App 조립: 플러그인 등록, 윈도우/카메라, AssetPlugin 경로
-├── ui.rs + ui/  # UiPlugin 루트 + 서브모듈(hud·boss_bar·banner·game_over)
-├── core/        # 게임 무관 코어 (config+config/·logic+logic/·components·state)
-├── entities/    # 게임 오브젝트 (asteroid·black_hole·boss+boss/·bullet·player·special_weapon·powerup·ufo)
+├── ui.rs + ui/  # UiPlugin 루트 + 서브모듈(hud·boss_bar·banner·title·pause·game_over·help·menu·scaling)
+├── core/        # 게임 무관 코어 (config+config/·logic+logic/·components·state[GameState/RunPhase])
+├── entities/    # 게임 오브젝트 (asteroid·black_hole·boss+boss/·bullet·player·special_weapon+special_weapon/·powerup·ufo)
 ├── systems/     # 엔티티 교차 시스템 (collision·movement·stage)
-└── fx/          # 연출·에셋 (sprites·animation·audio·background·fog·effects·shake)
+└── fx/          # 연출·에셋 (sprites·animation·audio·music·background·fog·effects·shake)
 ```
 
 **구조 규칙 — 폴더 = 기능, 파일 = 변형/관심사.** 한 기능 안에서 변형이 늘어 파일이 비대해지면(보스 종류·도메인 상수처럼) 서브모듈로 나누고, 루트 파일은 공유 인프라·디스패치·`pub use` 재수출만 담당합니다. 재수출 덕에 기존 경로(`crate::core::config::상수` 등)는 그대로 유지됩니다. 새 보스/테마/무기 변형을 추가할 땐 이 패턴을 따르세요(예: `entities/boss/golem.rs`, `core/config/boss.rs`).
@@ -65,7 +65,6 @@ cargo clippy --all-targets -- -D warnings  # 경고 0 유지
 ### Git
 
 - 커밋 메시지·PR 본문은 **한국어**로 작성합니다.
-- 커밋 말미에 `Co-Authored-By: Claude ...` 라인을 넣습니다.
 - main에서 직접 작업하지 말고 **브랜치 먼저**. PR/푸시는 이 저장소 소유 계정(**CrazyAtom**)으로 합니다(`gh auth switch --user CrazyAtom`).
 
 ## 개발 워크플로

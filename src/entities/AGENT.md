@@ -5,7 +5,7 @@
 ## 모듈
 
 - **`player.rs`** (가장 큼) — 우주선. 입력·회전(램프)·추진/브레이크·화염(자식 스프라이트)·실드 스프라이트·연사/확산 타이머·하이퍼스페이스·감쇠·디버그 핫키(F1).
-- **`special_weapon.rs`** — 특수무기(X). `SpecialWeapon{kind,charges}`·`SpecialBeam`, `activate_special`(발동·충전 소모·빔 스폰)·`tick_beam`(수명). 판정은 `systems/collision`, 보스 피해는 `entities/boss`.
+- **`special_weapon.rs` + `special_weapon/`** — 특수무기(`X`). **카트라이더식 FIFO 큐**: `SpecialWeapon{queue: VecDeque<SpecialWeaponKind>}`에 획득 순서대로 쌓이고 `X`를 누르면 맨 앞부터 발동(`activate_special`이 `pop_front` 후 match **디스패치**). `SpecialWeaponKind` 5종 = `LaserBeam`·`ScatterNova`·`HomingMissile`·`Shockwave`·`ShieldBurst`, 각 무기 로직은 **서브모듈**: `beam`(직선 관통 빔·`SpecialBeam`) · `nova`(전방위 산탄) · `missile`(유도 미사일) · `shockwave`(충격파 링) · `shield_burst`(순간 실드+접촉 파괴). 드롭 추첨은 `pick_weapon_kind`, HUD 아이콘은 `weapon_icon`. 판정은 `systems/collision`, 보스 피해는 `entities/boss`.
 - **`asteroid.rs`** — `Asteroid{size}`, `spawn_asteroid`, `random_spawn_position`/`random_velocity`. 스폰만 담당(분열은 `systems/collision`이 호출).
 - **`bullet.rs`** — `Bullet`(아군)/`EnemyBullet`(적), 발사·수명. 확산탄 발사 수 = `Spread.level * 3`.
 - **`ufo.rs`** — `Ufo{size}` 2종, 타이머 스폰, 조준/무작위 사격(`ufo_fire`).
@@ -19,5 +19,5 @@
 - 판 동안만 존재하는 엔티티엔 `core::state::GameplayEntity`를, 충돌 대상엔 `core::components::Collider{radius}`를 붙입니다.
 - 이동/회전은 `Velocity`/`AngularVelocity`를, 경계 처리는 순환이면 `Wrapping`을, **벽 반사 대상(소행성·얼음 보스)**이면 `EdgeReflect`를 붙이면 `systems/movement`가 처리합니다(반사 활성 여부는 `StageModifiers`가 결정).
 - 충돌·피해 판정은 여기서 하지 말고 `systems/collision`에 둡니다(엔티티 교차 관심사).
-- **확장**: 새 특수무기는 `SpecialWeaponKind`(powerup.rs) 변형 + `special_weapon.rs::activate_special`의 발동 분기로. 새 보스는 `BossKind` 변형 + 루트 디스패치 arm 추가 + **전용 로직은 `boss/<이름>.rs` 서브모듈**로(골렘/테슬라/특이점 패턴).
+- **확장**: 새 특수무기는 `SpecialWeaponKind`(special_weapon.rs) 변형 추가 → **전용 로직은 `special_weapon/<이름>.rs` 서브모듈**로 + `activate_special`·`weapon_icon`·`pick_weapon_kind`의 match arm 추가(컴파일러가 누락 지점을 강제). 새 보스는 `BossKind` 변형 + `boss_for_theme`/루트 디스패치 arm 추가 + **전용 로직은 `boss/<이름>.rs` 서브모듈**로(골렘/테슬라/특이점 패턴).
 - 방향성 스프라이트(총알·빔·화염)는 진행 방향으로 `Transform.rotation`을 맞춥니다(스프라이트 원본은 +Y 기준).
