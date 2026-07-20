@@ -73,11 +73,32 @@ fn main() {
         .run();
 }
 
-/// 에셋 루트 경로. 네이티브는 절대경로(IDE 실행 대응), wasm은 상대경로(HTTP 로딩).
+/// 실행파일 디렉터리 기준으로 배포 에셋 위치를 찾는다(순수 파일시스템 검사).
+/// macOS `.app`(../Resources/assets) → 실행파일 옆(assets) 순으로 우선.
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_asset_dir(exe_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let bundle = exe_dir.join("../Resources/assets");
+    if bundle.is_dir() {
+        return Some(bundle);
+    }
+    let sibling = exe_dir.join("assets");
+    if sibling.is_dir() {
+        return Some(sibling);
+    }
+    None
+}
+
+/// 에셋 루트 경로. 배포본은 실행 위치 기준, 개발(cargo run)은 소스 트리 fallback,
+/// wasm은 상대경로(HTTP 로딩).
 fn asset_path() -> String {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_string()
+        std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
+            .and_then(|dir| resolve_asset_dir(&dir))
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_string())
     }
     #[cfg(target_arch = "wasm32")]
     {
@@ -138,4 +159,49 @@ fn load_high_score() -> Persistent<core::state::HighScore> {
         .revert_to_default_on_deserialization_errors(true)
         .build()
         .expect("최고점수 리소스 초기화 실패")
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod asset_path_tests {
+    use super::resolve_asset_dir;
+    use std::fs;
+
+    fn temp_root(tag: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir()
+            .join(format!("bevy_ast_assettest_{tag}_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn prefers_macos_bundle_resources() {
+        let root = temp_root("bundle");
+        let macos = root.join("Contents/MacOS");
+        let res_assets = root.join("Contents/Resources/assets");
+        fs::create_dir_all(&macos).unwrap();
+        fs::create_dir_all(&res_assets).unwrap();
+        let got = resolve_asset_dir(&macos).expect("번들 Resources/assets를 찾아야 함");
+        assert_eq!(got.canonicalize().unwrap(), res_assets.canonicalize().unwrap());
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn falls_back_to_sibling_assets() {
+        let root = temp_root("sibling");
+        let exe_dir = root.join("bin");
+        let sibling = exe_dir.join("assets");
+        fs::create_dir_all(&sibling).unwrap();
+        let got = resolve_asset_dir(&exe_dir).expect("실행파일 옆 assets를 찾아야 함");
+        assert_eq!(got.canonicalize().unwrap(), sibling.canonicalize().unwrap());
+        fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn none_when_no_assets_present() {
+        let root = temp_root("none");
+        let exe_dir = root.join("bin");
+        fs::create_dir_all(&exe_dir).unwrap();
+        assert!(resolve_asset_dir(&exe_dir).is_none());
+        fs::remove_dir_all(&root).ok();
+    }
 }
