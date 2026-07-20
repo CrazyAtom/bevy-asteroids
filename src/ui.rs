@@ -88,6 +88,14 @@ impl Plugin for UiPlugin {
                         .or_else(in_state(RunPhase::Paused))
                         .and_then(not(help::help_is_open)),
                 ),
+            )
+            // 음악 토글 항목 라벨을 현재 상태(ON/OFF)로 갱신 — highlight_menu가 정적
+            // 라벨로 덮어쓴 뒤 실행. 음악 항목은 타이틀·일시정지에만 있다.
+            .add_systems(
+                Update,
+                menu::update_music_menu_label
+                    .after(menu::highlight_menu)
+                    .run_if(in_state(GameState::Title).or_else(in_state(RunPhase::Paused))),
             );
     }
 }

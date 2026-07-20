@@ -47,6 +47,8 @@ fn main() {
         // 도는 StateTransition 패스에서 실행되므로, Startup 시스템에서 지연 삽입하면
         // 부팅 첫 프레임에 "Resource does not exist" 패닉이 난다.
         .insert_resource(load_high_score())
+        // 음소거 설정도 빌드 시점에 삽입(sync_music이 첫 프레임부터 참조).
+        .insert_resource(fx::music::load_music_enabled())
         .add_plugins(systems::movement::MovementPlugin)
         .add_plugins(core::state::GameStatePlugin)
         .add_plugins(entities::player::PlayerPlugin)

@@ -4,8 +4,10 @@
 
 use bevy::app::AppExit;
 use bevy::prelude::*;
+use bevy_persistent::prelude::*;
 
 use crate::core::state::{GameState, RunPhase};
+use crate::fx::music::MusicEnabled;
 use crate::ui::help::HelpOpen;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -18,6 +20,7 @@ pub enum MenuAction {
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     QuitApp,
     ShowHelp,
+    ToggleMusic,
 }
 
 /// 메뉴 한 항목(Text 엔티티에 부착). 화면 마커와 함께 스폰된다.
@@ -27,6 +30,10 @@ pub struct MenuItem {
     pub action: MenuAction,
     pub label: &'static str,
 }
+
+/// 음악 on/off 토글 메뉴 항목 마커. 라벨이 상태를 반영하도록 별도 시스템이 갱신한다.
+#[derive(Component)]
+pub struct MusicMenuItem;
 
 /// 현재 강조 중인 항목과 총 개수. 화면 진입 시 초기화된다(단일 전역 리소스).
 #[derive(Resource, Default)]
@@ -58,6 +65,7 @@ pub fn menu_move(keys: Res<ButtonInput<KeyCode>>, mut selection: ResMut<MenuSele
 }
 
 /// Enter로 선택 항목의 액션을 디스패치.
+#[allow(clippy::too_many_arguments)]
 pub fn menu_activate(
     keys: Res<ButtonInput<KeyCode>>,
     selection: Res<MenuSelection>,
@@ -66,6 +74,7 @@ pub fn menu_activate(
     mut next_phase: ResMut<NextState<RunPhase>>,
     mut exit: MessageWriter<AppExit>,
     mut help: ResMut<HelpOpen>,
+    mut music: ResMut<Persistent<MusicEnabled>>,
 ) {
     if !keys.just_pressed(KeyCode::Enter) {
         return;
@@ -88,6 +97,25 @@ pub fn menu_activate(
         // 하부 상태(Title/Paused)는 그대로 두고 HELP 오버레이만 켠다. close_help가
         // 다음 프레임부터 아무 키로 닫으며, 그동안 이 메뉴 시스템은 run_if로 억제된다.
         MenuAction::ShowHelp => help.0 = true,
+        // 상태 전이 없이 음소거만 토글(지속). 라벨은 update_music_menu_label이 갱신.
+        MenuAction::ToggleMusic => {
+            music.0 = !music.0;
+            let _ = music.persist();
+        }
+    }
+}
+
+/// 음악 토글 항목의 라벨을 현재 상태로 갱신한다(`MUSIC: ON/OFF`, 선택 시 `> `).
+/// `highlight_menu`가 정적 라벨로 덮어쓴 뒤 실행되어 동적 상태로 다시 쓴다.
+pub fn update_music_menu_label(
+    selection: Res<MenuSelection>,
+    music: Res<Persistent<MusicEnabled>>,
+    mut items: Query<(&MenuItem, &mut Text), With<MusicMenuItem>>,
+) {
+    let state = if music.0 { "ON" } else { "OFF" };
+    for (item, mut text) in &mut items {
+        let prefix = if item.index == selection.index { "> " } else { "" };
+        *text = Text::new(format!("{prefix}MUSIC: {state}"));
     }
 }
 

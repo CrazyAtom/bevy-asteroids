@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::text::FontSize;
 
 use crate::core::state::RunPhase;
-use crate::ui::menu::{MenuAction, MenuItem, MenuSelection};
+use crate::ui::menu::{MenuAction, MenuItem, MenuSelection, MusicMenuItem};
 use crate::ui::scaling::spawn_stage;
 
 #[derive(Component)]
@@ -49,6 +49,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
         (MenuAction::Resume, "RESUME"),
         (MenuAction::Restart, "RESTART"),
         (MenuAction::ShowHelp, "HELP"),
+        (MenuAction::ToggleMusic, "MUSIC"),
         (MenuAction::QuitToTitle, "QUIT TO TITLE"),
     ];
     let stage = spawn_stage(&mut commands, (PauseUi, GlobalZIndex(2)));
@@ -65,7 +66,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
             },
         ));
         for (i, (action, label)) in items.iter().enumerate() {
-            s.spawn((
+            let mut e = s.spawn((
                 MenuItem { index: i, action: *action, label },
                 Text::new(label.to_string()),
                 TextFont { font_size: FontSize::Px(34.0), ..default() },
@@ -77,9 +78,12 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
                     ..default()
                 },
             ));
+            if *action == MenuAction::ToggleMusic {
+                e.insert(MusicMenuItem);
+            }
         }
     });
-    *selection = MenuSelection { index: 0, count: 4 };
+    *selection = MenuSelection { index: 0, count: 5 };
 }
 
 pub(super) fn despawn_pause_menu(mut commands: Commands, query: Query<Entity, With<PauseUi>>) {
