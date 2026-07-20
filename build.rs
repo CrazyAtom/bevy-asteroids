@@ -6,6 +6,15 @@ use std::path::Path;
 const SR: u32 = 22_050;
 
 fn main() {
+    // Windows: exe에 앱 아이콘 리소스를 임베드(탐색기·작업표시줄 표시용).
+    // 호스트가 Windows일 때만(=windows 러너 빌드) 실행되고, 그 외 타깃엔 무영향.
+    #[cfg(windows)]
+    {
+        let mut res = winresource::WindowsResource::new();
+        res.set_icon("assets/icon/app-icon.ico");
+        res.compile().expect("Windows 아이콘 리소스 컴파일 실패");
+    }
+
     let dir = Path::new("assets/sounds");
     fs::create_dir_all(dir).unwrap();
     // (이름, 지속시간초, 생성기)

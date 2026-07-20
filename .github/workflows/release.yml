@@ -1,0 +1,82 @@
+name: Release native builds
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '릴리스 태그(예: v0.1.0) — 이미 존재해야 함'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 시스템 라이브러리(네이티브 Linux 빌드 — alsa/udev)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test
+
+  create-release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release 생성(없으면)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+                 --title "$TAG" --generate-notes
+
+  build-macos:
+    needs: create-release
+    runs-on: macos-latest   # Apple Silicon(arm64)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: librsvg 설치(아이콘 래스터화)
+        run: brew install librsvg
+      - name: 빌드(build.rs가 에셋 생성)
+        run: cargo build --release
+      - name: .app 패키징
+        run: |
+          chmod +x scripts/package-macos.sh
+          scripts/package-macos.sh "${TAG#v}"
+      - name: Release 업로드
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" dist-native/BevyAsteroids-macos-arm64.zip --clobber --repo "$GITHUB_REPOSITORY"
+
+  build-windows:
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: 빌드(build.rs가 에셋 생성 + 아이콘 임베드)
+        run: cargo build --release
+      - name: 패키징(zip)
+        shell: pwsh
+        run: |
+          $dir = "bevy-asteroids-windows-x64"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item target\release\bevy-asteroids.exe "$dir\"
+          Copy-Item -Recurse assets\sprites "$dir\assets\sprites"
+          Remove-Item -Recurse -Force "$dir\assets\sprites\src" -ErrorAction SilentlyContinue
+          Copy-Item -Recurse assets\sounds "$dir\assets\sounds"
+          Copy-Item -Recurse assets\music  "$dir\assets\music"
+          Compress-Archive -Path "$dir\*" -DestinationPath "$dir.zip" -Force
+      - name: Release 업로드
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$env:TAG" bevy-asteroids-windows-x64.zip --clobber --repo "$env:GITHUB_REPOSITORY"

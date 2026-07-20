@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2240"/>
+      <stop offset="1" stop-color="#0a0d1c"/>
+    </linearGradient>
+  </defs>
+  <!-- 라운드스퀘어 우주 배경 -->
+  <rect x="0" y="0" width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <!-- 별 -->
+  <g fill="#cfd8ff">
+    <circle cx="220" cy="230" r="9"/><circle cx="800" cy="200" r="7"/>
+    <circle cx="860" cy="470" r="6"/><circle cx="180" cy="640" r="7"/>
+    <circle cx="330" cy="820" r="6"/><circle cx="720" cy="800" r="8"/>
+  </g>
+  <!-- 소행성 -->
+  <path d="M250 720 l50 -30 55 20 20 55 -35 45 -60 5 -40 -45z"
+        fill="#7c6f63" stroke="#2a2320" stroke-width="14" stroke-linejoin="round"/>
+  <!-- 플레이어 우주선(위 방향, 카툰: 플랫 채색 + 두꺼운 외곽선 + 하이라이트) -->
+  <g transform="translate(512 470) rotate(0)">
+    <path d="M0 -190 L120 150 L0 90 L-120 150 Z"
+          fill="#4ea1ff" stroke="#10233f" stroke-width="26" stroke-linejoin="round"/>
+    <path d="M0 -190 L44 60 L0 30 L-44 60 Z" fill="#bfe0ff"/>
+    <!-- 추진 화염 -->
+    <path d="M-46 120 L0 250 L46 120 L0 165 Z" fill="#ffb43b" stroke="#c8460f" stroke-width="14" stroke-linejoin="round"/>
+  </g>
+</svg>
