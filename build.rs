@@ -21,6 +21,12 @@ fn main() {
     let music_dir = Path::new("assets/music");
     fs::create_dir_all(music_dir).unwrap();
     write_music(music_dir, "title.wav", title_track());
+    write_music(music_dir, "belt.wav", belt_track());
+    write_music(music_dir, "fleet.wav", fleet_track());
+    write_music(music_dir, "flare.wav", flare_track());
+    write_music(music_dir, "ice.wav", ice_track());
+    write_music(music_dir, "storm.wav", storm_track());
+    write_music(music_dir, "void.wav", void_track());
 
     // ── 스프라이트: assets/sprites/src/*.svg → assets/sprites/*.png ──
     rasterize_sprites();
@@ -155,12 +161,18 @@ fn triangle(phase: f32) -> f32 {
 }
 
 /// 한 보이스를 total_samples 길이 버퍼에 렌더(노트별 ASR 엔벨로프).
+/// 노트 경계를 **누적 비트 위치**로 잡아 각 노트의 start/end 샘플을 정한다
+/// (노트별 dur를 개별 반올림해 누적하면 오차가 쌓여 마지막 노트가 릴리스 전에
+/// 잘리고 → 루프 이음새 클릭이 난다). 마지막 노트 end == total_samples로 일치.
 fn render_voice(v: &Voice, bpm: f32, total_samples: usize) -> Vec<f32> {
-    let beat_secs = 60.0 / bpm;
+    let spb = (60.0 / bpm) * SR as f32; // beat당 샘플 수
     let mut out = vec![0.0f32; total_samples];
-    let mut cursor = 0usize;
+    let mut beat = 0.0f32;
     for note in v.notes {
-        let dur = (note.beats * beat_secs * SR as f32).round() as usize;
+        let start = (beat * spb).round() as usize;
+        let end = (((beat + note.beats) * spb).round() as usize).min(total_samples);
+        beat += note.beats;
+        let dur = end.saturating_sub(start);
         if note.semi != REST && dur > 0 {
             let hz = note_hz(note.semi + v.octave * 12);
             let dur_t = dur as f32 / SR as f32;
@@ -168,7 +180,7 @@ fn render_voice(v: &Voice, bpm: f32, total_samples: usize) -> Vec<f32> {
             let release = 0.03f32.min(dur_t * 0.4);
             let mut phase = 0.0f32;
             for i in 0..dur {
-                let idx = cursor + i;
+                let idx = start + i;
                 if idx >= total_samples {
                     break;
                 }
@@ -188,7 +200,6 @@ fn render_voice(v: &Voice, bpm: f32, total_samples: usize) -> Vec<f32> {
                 phase += hz / SR as f32;
             }
         }
-        cursor += dur;
     }
     out
 }
@@ -248,5 +259,134 @@ fn title_track() -> Vec<i16> {
             Voice { notes: &arp, wave: Wave::Pulse(0.5), octave: 0, amp: 0.32 },
         ],
         100.0,
+    )
+}
+
+// ── 트랙 작성 헬퍼 ──
+
+/// 코드 루트를 `note_beats` 음표로 코드당 `per_chord_beats`만큼 반복하는 베이스.
+fn bass_roots(roots: &[i32], per_chord_beats: f32, note_beats: f32) -> Vec<Note> {
+    let count = (per_chord_beats / note_beats).round() as usize;
+    let mut v = Vec::new();
+    for &r in roots {
+        for _ in 0..count {
+            v.push(n(r, note_beats));
+        }
+    }
+    v
+}
+
+/// 각 트라이어드를 `note_beats` 음표로 상행 순환 아르페지오(코드당 `per_chord_beats`).
+fn arp_chords(chords: &[[i32; 3]], per_chord_beats: f32, note_beats: f32) -> Vec<Note> {
+    let per = (per_chord_beats / note_beats).round() as usize;
+    let mut v = Vec::new();
+    for c in chords {
+        let cycle = [c[0], c[1], c[2], c[0] + 12];
+        for i in 0..per {
+            v.push(n(cycle[i % 4], note_beats));
+        }
+    }
+    v
+}
+
+/// AsteroidBelt: C장조 C–G–Am–F, 120 BPM, 경쾌·구동감.
+fn belt_track() -> Vec<i16> {
+    let roots = [3, 10, 0, 8];
+    let chords = [[3, 7, 10], [10, 14, 17], [0, 3, 7], [8, 12, 15]];
+    render_track(
+        &[
+            Voice { notes: &bass_roots(&roots, 4.0, 0.5), wave: Wave::Triangle, octave: -2, amp: 0.6 },
+            Voice { notes: &arp_chords(&chords, 4.0, 0.25), wave: Wave::Pulse(0.5), octave: 0, amp: 0.28 },
+        ],
+        120.0,
+    )
+}
+
+/// AlienFleet: A단조 Am–Dm–G–Am, 130 BPM, 긴장·행진(얇은 펄스 duty).
+fn fleet_track() -> Vec<i16> {
+    let roots = [0, 5, 10, 0];
+    let chords = [[0, 3, 7], [5, 8, 12], [10, 14, 17], [0, 3, 7]];
+    render_track(
+        &[
+            Voice { notes: &bass_roots(&roots, 4.0, 1.0), wave: Wave::Triangle, octave: -2, amp: 0.62 },
+            Voice { notes: &arp_chords(&chords, 4.0, 0.25), wave: Wave::Pulse(0.25), octave: 0, amp: 0.26 },
+        ],
+        130.0,
+    )
+}
+
+/// SolarFlare: C장조 C–Am–F–G, 150 BPM, 격렬·고에너지(16분 아르페지오).
+fn flare_track() -> Vec<i16> {
+    let roots = [3, 0, 8, 10];
+    let chords = [[3, 7, 10], [0, 3, 7], [8, 12, 15], [10, 14, 17]];
+    render_track(
+        &[
+            Voice { notes: &bass_roots(&roots, 4.0, 0.5), wave: Wave::Triangle, octave: -2, amp: 0.6 },
+            Voice { notes: &arp_chords(&chords, 4.0, 0.125), wave: Wave::Pulse(0.5), octave: 1, amp: 0.24 },
+        ],
+        150.0,
+    )
+}
+
+/// FrozenField: A단조, 80 BPM, 차갑고 성김(긴 베이스 + 쉼표 섞인 고음).
+fn ice_track() -> Vec<i16> {
+    // 베이스: Am(0) 8박, Em(7) 8박 — 아주 성김.
+    let bass = [n(0, 8.0), n(7, 8.0)];
+    // 고음: 반음표 사이 쉼표로 비워 차가운 여백. Am(A/C/E) → Em(E/G/B).
+    let lead = [
+        n(0, 1.0), n(REST, 1.0), n(7, 1.0), n(REST, 1.0),
+        n(3, 1.0), n(REST, 1.0), n(7, 1.0), n(REST, 1.0),
+        n(7, 1.0), n(REST, 1.0), n(14, 1.0), n(REST, 1.0),
+        n(10, 1.0), n(REST, 1.0), n(14, 1.0), n(REST, 1.0),
+    ];
+    render_track(
+        &[
+            Voice { notes: &bass, wave: Wave::Triangle, octave: -2, amp: 0.55 },
+            Voice { notes: &lead, wave: Wave::Pulse(0.5), octave: 1, amp: 0.3 },
+        ],
+        80.0,
+    )
+}
+
+/// EmStorm: 140 BPM, 불안정·디소넌트(반음/트라이톤 진동).
+fn storm_track() -> Vec<i16> {
+    // 베이스: 루트↔트라이톤(±6반음) 진동 → 긴장감.
+    let bass = [
+        n(0, 1.0), n(6, 1.0), n(0, 1.0), n(6, 1.0),
+        n(1, 1.0), n(7, 1.0), n(1, 1.0), n(7, 1.0),
+        n(0, 1.0), n(6, 1.0), n(0, 1.0), n(6, 1.0),
+        n(1, 1.0), n(7, 1.0), n(1, 1.0), n(7, 1.0),
+    ];
+    // 리드: 반음계 상행/하행 런(불안정).
+    let lead = [
+        n(0, 0.5), n(1, 0.5), n(2, 0.5), n(3, 0.5), n(4, 0.5), n(3, 0.5), n(2, 0.5), n(1, 0.5),
+        n(6, 0.5), n(7, 0.5), n(8, 0.5), n(9, 0.5), n(10, 0.5), n(9, 0.5), n(8, 0.5), n(7, 0.5),
+        n(0, 0.5), n(1, 0.5), n(2, 0.5), n(3, 0.5), n(4, 0.5), n(3, 0.5), n(2, 0.5), n(1, 0.5),
+        n(6, 0.5), n(7, 0.5), n(8, 0.5), n(9, 0.5), n(10, 0.5), n(9, 0.5), n(8, 0.5), n(7, 0.5),
+    ];
+    render_track(
+        &[
+            Voice { notes: &bass, wave: Wave::Triangle, octave: -2, amp: 0.6 },
+            Voice { notes: &lead, wave: Wave::Pulse(0.25), octave: 0, amp: 0.22 },
+        ],
+        140.0,
+    )
+}
+
+/// BlackHole: A단조, 70 BPM, 어둡고 느림(깊은 저음 드론 + 성긴 단조 아르페지오).
+fn void_track() -> Vec<i16> {
+    // 깊은 드론(3옥타브 아래): Am 8박, Fm 8박.
+    let bass = [n(0, 8.0), n(8, 8.0)];
+    // 성긴 단조 아르페지오(느린 온음표/2분음표).
+    let arp = [
+        n(0, 2.0), n(3, 2.0), n(7, 2.0), n(3, 2.0),
+        n(8, 2.0), n(11, 2.0), n(15, 2.0), n(11, 2.0),
+    ];
+    render_track(
+        &[
+            Voice { notes: &bass, wave: Wave::Triangle, octave: -3, amp: 0.6 },
+            Voice { notes: &arp, wave: Wave::Pulse(0.5), octave: 0, amp: 0.26 },
+        ],
+        70.0,
     )
 }
