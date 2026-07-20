@@ -114,4 +114,15 @@ mod tests {
         app.update();
         assert_eq!(*app.world().resource::<State<RunPhase>>().get(), RunPhase::Paused);
     }
+
+    #[test]
+    fn pause_menu_item_count_matches_selection() {
+        // 항목 배열과 count 리터럴(5)이 어긋나면 마지막 항목이 방향키로 도달 불가.
+        let mut app = App::new();
+        app.insert_resource(MenuSelection::default());
+        app.world_mut().run_system_once(spawn_pause_menu).unwrap();
+        let items = app.world_mut().query::<&MenuItem>().iter(app.world()).count();
+        assert_eq!(items, 5, "RESUME/RESTART/HELP/MUSIC/QUIT TO TITLE = 5항목");
+        assert_eq!(app.world().resource::<MenuSelection>().count, 5);
+    }
 }

@@ -241,7 +241,9 @@ pub(super) fn advance_title_intro(
             TextColor(Color::srgb(0.45, 0.45, 0.45)),
             Node {
                 position_type: PositionType::Absolute,
-                top: Val::Percent(82.0),
+                // 마지막 메뉴 항목(56 + (len-1)*8%) 아래 한 칸(8%) 간격. 항목 수가
+                // 늘어도(웹 3 / 네이티브 4) 겹치지 않게 적응한다.
+                top: Val::Percent(56.0 + items.len() as f32 * 8.0),
                 left: Val::Percent(36.0),
                 ..default()
             },

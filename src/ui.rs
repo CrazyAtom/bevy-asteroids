@@ -95,7 +95,11 @@ impl Plugin for UiPlugin {
                 Update,
                 menu::update_music_menu_label
                     .after(menu::highlight_menu)
-                    .run_if(in_state(GameState::Title).or_else(in_state(RunPhase::Paused))),
+                    .run_if(
+                        in_state(GameState::Title)
+                            .or_else(in_state(RunPhase::Paused))
+                            .and_then(not(help::help_is_open)),
+                    ),
             );
     }
 }

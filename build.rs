@@ -212,6 +212,15 @@ fn render_track(voices: &[Voice], bpm: f32) -> Vec<i16> {
         .iter()
         .map(|v| v.notes.iter().map(|note| note.beats).sum::<f32>())
         .fold(0.0f32, f32::max);
+    // 모든 보이스는 같은 총 비트여야 심리스 루프가 보장된다(어긋나면 마지막 노트가
+    // total_samples에서 릴리스 전에 잘려 클릭). 트랙 작성 실수를 빌드시 조기 검출.
+    for v in voices {
+        let beats: f32 = v.notes.iter().map(|note| note.beats).sum();
+        assert!(
+            (beats - total_beats).abs() < 1e-3,
+            "보이스 총 비트({beats})가 트랙 총 비트({total_beats})와 다름 — 루프 어긋남"
+        );
+    }
     let total_samples = (total_beats * beat_secs * SR as f32).round() as usize;
     let mut mix = vec![0.0f32; total_samples];
     for v in voices {
