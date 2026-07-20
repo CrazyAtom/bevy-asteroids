@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 시스템 라이브러리(네이티브 Linux 빌드 — alsa/udev)
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev
+      - name: 시스템 라이브러리(Bevy 네이티브 Linux 빌드 — 오디오/입력/윈도잉)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test
 
