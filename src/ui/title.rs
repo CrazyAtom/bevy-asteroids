@@ -15,7 +15,7 @@ use crate::core::logic::{wrap_position, AsteroidSize};
 use crate::core::state::HighScore;
 use crate::fx::sprites::{sprite_size_for, SpriteAssets};
 use crate::ui::help::HelpOpen;
-use crate::ui::menu::{MenuAction, MenuItem, MenuSelection};
+use crate::ui::menu::{MenuAction, MenuItem, MenuSelection, MusicMenuItem};
 use crate::ui::scaling::spawn_stage;
 
 const TITLE_TEXT: &str = "ASTEROIDS";
@@ -207,15 +207,19 @@ pub(super) fn advance_title_intro(
     let items: &[(MenuAction, &str)] = &[
         (MenuAction::StartGame, "START"),
         (MenuAction::ShowHelp, "HELP"),
+        (MenuAction::ToggleMusic, "MUSIC"),
         (MenuAction::QuitApp, "QUIT"),
     ];
     #[cfg(target_arch = "wasm32")]
-    let items: &[(MenuAction, &str)] =
-        &[(MenuAction::StartGame, "START"), (MenuAction::ShowHelp, "HELP")];
+    let items: &[(MenuAction, &str)] = &[
+        (MenuAction::StartGame, "START"),
+        (MenuAction::ShowHelp, "HELP"),
+        (MenuAction::ToggleMusic, "MUSIC"),
+    ];
     let stage = spawn_stage(&mut commands, (TitleUi,));
     commands.entity(stage).with_children(|s| {
         for (i, (action, label)) in items.iter().enumerate() {
-            s.spawn((
+            let mut e = s.spawn((
                 MenuItem { index: i, action: *action, label },
                 Text::new(label.to_string()),
                 TextFont { font_size: FontSize::Px(28.0), ..default() },
@@ -227,6 +231,9 @@ pub(super) fn advance_title_intro(
                     ..default()
                 },
             ));
+            if *action == MenuAction::ToggleMusic {
+                e.insert(MusicMenuItem);
+            }
         }
         s.spawn((
             Text::new("UP/DOWN SELECT   ENTER CONFIRM"),
@@ -234,7 +241,9 @@ pub(super) fn advance_title_intro(
             TextColor(Color::srgb(0.45, 0.45, 0.45)),
             Node {
                 position_type: PositionType::Absolute,
-                top: Val::Percent(82.0),
+                // 마지막 메뉴 항목(56 + (len-1)*8%) 아래 한 칸(8%) 간격. 항목 수가
+                // 늘어도(웹 3 / 네이티브 4) 겹치지 않게 적응한다.
+                top: Val::Percent(56.0 + items.len() as f32 * 8.0),
                 left: Val::Percent(36.0),
                 ..default()
             },
@@ -455,19 +464,20 @@ mod tests {
             .collect();
         items.sort_by_key(|(index, _)| *index);
 
-        // 네이티브 테스트 타깃: START / HELP / QUIT 3항목(웹에선 QUIT 제외).
+        // 네이티브 테스트 타깃: START / HELP / MUSIC / QUIT 4항목(웹에선 QUIT 제외).
         assert_eq!(
             items,
             vec![
                 (0, MenuAction::StartGame),
                 (1, MenuAction::ShowHelp),
-                (2, MenuAction::QuitApp)
+                (2, MenuAction::ToggleMusic),
+                (3, MenuAction::QuitApp)
             ]
         );
 
         let selection = app.world().resource::<MenuSelection>();
         assert_eq!(selection.index, 0);
-        assert_eq!(selection.count, 3);
+        assert_eq!(selection.count, 4);
 
         let anim = app.world().resource::<TitleAnim>();
         assert!(anim.ready);

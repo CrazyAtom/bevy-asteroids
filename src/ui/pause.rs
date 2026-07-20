@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::text::FontSize;
 
 use crate::core::state::RunPhase;
-use crate::ui::menu::{MenuAction, MenuItem, MenuSelection};
+use crate::ui::menu::{MenuAction, MenuItem, MenuSelection, MusicMenuItem};
 use crate::ui::scaling::spawn_stage;
 
 #[derive(Component)]
@@ -49,6 +49,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
         (MenuAction::Resume, "RESUME"),
         (MenuAction::Restart, "RESTART"),
         (MenuAction::ShowHelp, "HELP"),
+        (MenuAction::ToggleMusic, "MUSIC"),
         (MenuAction::QuitToTitle, "QUIT TO TITLE"),
     ];
     let stage = spawn_stage(&mut commands, (PauseUi, GlobalZIndex(2)));
@@ -65,7 +66,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
             },
         ));
         for (i, (action, label)) in items.iter().enumerate() {
-            s.spawn((
+            let mut e = s.spawn((
                 MenuItem { index: i, action: *action, label },
                 Text::new(label.to_string()),
                 TextFont { font_size: FontSize::Px(34.0), ..default() },
@@ -77,9 +78,12 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, mut selection: ResMut<Men
                     ..default()
                 },
             ));
+            if *action == MenuAction::ToggleMusic {
+                e.insert(MusicMenuItem);
+            }
         }
     });
-    *selection = MenuSelection { index: 0, count: 4 };
+    *selection = MenuSelection { index: 0, count: 5 };
 }
 
 pub(super) fn despawn_pause_menu(mut commands: Commands, query: Query<Entity, With<PauseUi>>) {
@@ -109,5 +113,16 @@ mod tests {
         app.world_mut().run_system_once(pause_input).unwrap();
         app.update();
         assert_eq!(*app.world().resource::<State<RunPhase>>().get(), RunPhase::Paused);
+    }
+
+    #[test]
+    fn pause_menu_item_count_matches_selection() {
+        // 항목 배열과 count 리터럴(5)이 어긋나면 마지막 항목이 방향키로 도달 불가.
+        let mut app = App::new();
+        app.insert_resource(MenuSelection::default());
+        app.world_mut().run_system_once(spawn_pause_menu).unwrap();
+        let items = app.world_mut().query::<&MenuItem>().iter(app.world()).count();
+        assert_eq!(items, 5, "RESUME/RESTART/HELP/MUSIC/QUIT TO TITLE = 5항목");
+        assert_eq!(app.world().resource::<MenuSelection>().count, 5);
     }
 }

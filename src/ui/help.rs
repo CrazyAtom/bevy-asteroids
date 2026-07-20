@@ -81,13 +81,14 @@ fn item_legend(assets: &SpriteAssets) -> [(Handle<Image>, &'static str); 9] {
 }
 
 /// 조작 안내(키 → 동작). 기본 폰트에 화살표 글리프가 없어 ASCII로 표기한다.
-const CONTROLS: [(&str, &str); 6] = [
+const CONTROLS: [(&str, &str); 7] = [
     ("MOVE", "LEFT / RIGHT  rotate,   UP  thrust,   DOWN  brake"),
     ("FIRE", "SPACE"),
     ("SPECIAL", "X    (fires queued weapon)"),
     ("HYPERSPACE", "H    (emergency warp)"),
     ("PAUSE", "ESC"),
     ("MENU", "UP / DOWN  move,   ENTER  select"),
+    ("MUSIC", "M    toggle on / off"),
 ];
 
 fn spawn_help_panel(commands: &mut Commands, assets: &SpriteAssets) {
