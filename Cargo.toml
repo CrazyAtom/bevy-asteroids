@@ -15,6 +15,10 @@ serde = { version = "1.0.228", features = ["derive"] }
 [build-dependencies]
 resvg = "0.44"
 
+# Windows exe에 앱 아이콘을 임베드(build.rs). Windows 타깃 빌드에서만 사용.
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
 # 웹(wasm)에서만 난수 소스로 브라우저 crypto(Web Crypto API)를 쓰도록 getrandom
 # 백엔드를 활성화한다. rand 0.10이 getrandom 0.4.3을 요구하며, wasm32-unknown-unknown
 # 타깃에서는 "wasm_js" feature 없이는 컴파일 자체가 실패한다(네이티브는 무관·무영향).
