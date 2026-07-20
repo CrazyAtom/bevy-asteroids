@@ -11,6 +11,15 @@ Rust 게임 엔진 [Bevy](https://bevyengine.org) `0.19` 로 만든 **애스테�
 
 ---
 
+## ⬇️ 다운로드 (데스크톱)
+
+[Releases](https://github.com/CrazyAtom/bevy-asteroids/releases)에서 OS별 빌드를 받으세요. **미서명 빌드**라 첫 실행 시 아래 안내가 필요합니다.
+
+- **macOS (Apple Silicon)**: `BevyAsteroids-macos-arm64.zip` 압축 해제 → `BevyAsteroids.app`을 응용 프로그램으로 이동 → **우클릭 → 열기**(최초 1회, Gatekeeper). 안 열리면 터미널에서 `xattr -dr com.apple.quarantine BevyAsteroids.app`.
+- **Windows (x64)**: `bevy-asteroids-windows-x64.zip` 압축 해제 → `bevy-asteroids.exe` 실행 → SmartScreen 경고 시 **추가 정보 → 실행**.
+
+---
+
 ## ✨ 특징
 
 - **관성 기반 조종** — 추진을 멈춰도 관성으로 미끄러지고, 마찰/브레이크로 감속합니다.
