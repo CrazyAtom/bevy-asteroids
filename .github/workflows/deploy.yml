@@ -3,6 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # 문서/라이선스만 바뀐 푸시는 배포하지 않는다(불필요한 WASM 재빌드 방지).
+    # 변경 파일이 전부 아래 패턴에 해당할 때만 스킵된다(코드+문서 동시 변경은 배포).
+    paths-ignore:
+      - '**.md'
+      - LICENSE
   workflow_dispatch:
 
 permissions:
